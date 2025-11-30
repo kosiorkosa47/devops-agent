@@ -409,4 +409,5 @@ export default function AgentChat() {
         </div>
       </form>
     </div>
+  )
 }
