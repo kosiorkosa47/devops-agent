@@ -61,14 +61,8 @@ async def agent_chat(
         user_id = current_user.get("sub", "demo-user")
         conversation_id = request.conversation_id or f"conv_{user_id}_{int(__import__('time').time())}"
         
-        # Get conversation history
+        # Get conversation history (in-memory for simple mode)
         conversation_history = []
-        if request.conversation_id:
-            redis = await get_redis_client()
-            history_key = f"conversation:{request.conversation_id}"
-            stored_history = await redis.get(history_key)
-            if stored_history:
-                conversation_history = json.loads(stored_history)
         
         # Chat with agent (including tool execution)
         result = await claude_agent.chat_with_tools(
@@ -91,11 +85,7 @@ async def agent_chat(
             "content": result.get("response", "")
         })
         
-        # Store in Redis
-        redis = await get_redis_client()
-        history_key = f"conversation:{conversation_id}"
-        await redis.setex(history_key, 86400, json.dumps(conversation_history))
-        
+        # Note: Conversation history not persisted in simple mode
         # Return response
         return AgentResponse(
             response=result.get("response", ""),

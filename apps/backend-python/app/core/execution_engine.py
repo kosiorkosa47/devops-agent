@@ -10,6 +10,7 @@ from enum import Enum
 
 from app.core.tools import ToolDefinitions
 from app.core.executors.kubernetes import KubernetesExecutor
+from app.core.executors.system import system_executor
 from app.core.redis import get_redis_client
 from app.core.predictive_engine import predictive_engine
 from app.core.security_engine import security_engine
@@ -297,41 +298,69 @@ class ExecutionEngine:
                 "message": f"Could not validate result: {e}"
             }
     
-    async def _route_execution(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
-        """Route execution to appropriate executor"""
+    async def _route_execution(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Route tool execution to the appropriate executor
         
-        # Kubernetes tools (including new analysis and self-healing tools)
-        if tool_name.startswith("kubectl_") or tool_name.startswith("analyze_") or tool_name.startswith("auto_"):
-            method_name = tool_name
+        Args:
+            tool_name: Name of the tool to execute
+            parameters: Tool parameters
+            
+        Returns:
+            Execution result
+        """
+        # System/Infrastructure operations
+        if tool_name in ["install_minikube", "install_kubectl", "start_minikube", 
+                        "stop_minikube", "get_cluster_status", "check_tool_installed"]:
+            method = getattr(system_executor, tool_name, None)
+            if not method:
+                raise ValueError(f"Unknown system operation: {tool_name}")
+            return await method(**parameters)
+        
+        # Kubernetes operations
+        elif tool_name.startswith("kubectl_"):
+            method_name = tool_name.replace("kubectl_", "")
             method = getattr(self.kubernetes, method_name, None)
-            if method:
-                return await method(**parameters)
-            else:
-                raise ValueError(f"Kubernetes method not found: {method_name}")
+            if not method:
+                raise ValueError(f"Unknown Kubernetes operation: {tool_name}")
+            return await method(**parameters)
         
-        # Docker tools
+        # Resource analysis operations
+        elif tool_name in ["analyze_resource_efficiency", "auto_restart_pod", "auto_scale_if_needed"]:
+            method = getattr(self.kubernetes, tool_name, None)
+            if not method:
+                raise ValueError(f"Unknown operation: {tool_name}")
+            return await method(**parameters)
+        
+        # Predictive operations
+        elif tool_name in ["predict_resource_exhaustion", "suggest_preemptive_actions", 
+                          "identify_failure_patterns", "predict_scaling_needs"]:
+            method = getattr(predictive_engine, tool_name, None)
+            if not method:
+                raise ValueError(f"Unknown predictive operation: {tool_name}")
+            return await method(**parameters)
+        
+        # Security operations
+        elif tool_name in ["scan_pod_security", "auto_fix_security_issue"]:
+            method = getattr(security_engine, tool_name, None)
+            if not method:
+                raise ValueError(f"Unknown security operation: {tool_name}")
+            return await method(**parameters)
+        
+        # Docker operations
         elif tool_name.startswith("docker_"):
             # TODO: Implement Docker executor
-            return {"message": "Docker executor not yet implemented"}
+            return {"error": "Docker operations not yet implemented"}
         
-        # Git tools
+        # Git operations
         elif tool_name.startswith("git_"):
             # TODO: Implement Git executor
-            return {"message": "Git executor not yet implemented"}
+            return {"error": "Git operations not yet implemented"}
         
-        # Monitoring tools
-        elif tool_name.startswith("prometheus_") or tool_name.startswith("check_"):
-            # TODO: Implement monitoring executor
-            return {"message": "Monitoring executor not yet implemented"}
-        
-        # Predictive tools
-        elif tool_name.startswith("predict_") or tool_name.startswith("suggest_") or tool_name.startswith("identify_"):
-            method_name = tool_name
-            method = getattr(predictive_engine, method_name, None)
-            if method:
-                return method(**parameters)
-            else:
-                raise ValueError(f"Predictive method not found: {method_name}")
+        # Monitoring operations
+        elif tool_name.startswith("prometheus_"):
+            # TODO: Implement Prometheus executor
+            return {"error": "Monitoring operations not yet implemented"}
         
         # Security tools
         elif tool_name.startswith("scan_") or tool_name == "auto_fix_security_issue":

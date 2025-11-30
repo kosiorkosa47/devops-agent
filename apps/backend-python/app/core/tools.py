@@ -403,6 +403,77 @@ class ToolDefinitions:
         ]
     
     @staticmethod
+    def get_system_tools() -> List[Dict[str, Any]]:
+        """Infrastructure installation and management tools"""
+        return [
+            {
+                "name": "install_minikube",
+                "description": "Install Minikube for local Kubernetes cluster. Works on Windows, Linux, and macOS. Automatically installs dependencies (Chocolatey on Windows).",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "install_kubectl",
+                "description": "Install kubectl CLI tool for Kubernetes management. Required for interacting with Kubernetes clusters.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "start_minikube",
+                "description": "Start Minikube Kubernetes cluster. Creates a single-node cluster for local development. Requires Minikube to be installed first.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "driver": {
+                            "type": "string",
+                            "description": "Driver to use (docker, hyperv, virtualbox). Default: docker",
+                            "enum": ["docker", "hyperv", "virtualbox", "vmware"]
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "stop_minikube",
+                "description": "Stop running Minikube cluster. Preserves cluster state for later restart.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "get_cluster_status",
+                "description": "Get status of all Kubernetes clusters and tools. Shows what's installed, running, and connected.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "check_tool_installed",
+                "description": "Check if a specific tool is installed on the system (kubectl, minikube, docker, etc.)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "tool_name": {
+                            "type": "string",
+                            "description": "Name of the tool to check (e.g., kubectl, minikube, docker, helm)"
+                        }
+                    },
+                    "required": ["tool_name"]
+                }
+            }
+        ]
+    
+    @staticmethod
     def get_all_tools() -> List[Dict[str, Any]]:
         """Get all available tools"""
         return (
@@ -411,13 +482,19 @@ class ToolDefinitions:
             ToolDefinitions.get_git_tools() +
             ToolDefinitions.get_monitoring_tools() +
             ToolDefinitions.get_predictive_tools() +
-            ToolDefinitions.get_security_tools()
+            ToolDefinitions.get_security_tools() +
+            ToolDefinitions.get_system_tools()
         )
     
     @staticmethod
     def is_dangerous_operation(tool_name: str) -> bool:
         """Check if a tool requires approval"""
-        dangerous_keywords = ["delete", "destroy", "scale", "apply", "deploy", "restart", "kill"]
+        # Installation tools are considered safe (only install, don't modify existing)
+        safe_install_tools = ["install_minikube", "install_kubectl", "check_tool_installed", "get_cluster_status"]
+        if tool_name in safe_install_tools:
+            return False
+        
+        dangerous_keywords = ["delete", "destroy", "scale", "apply", "deploy", "restart", "kill", "start", "stop"]
         return any(keyword in tool_name.lower() for keyword in dangerous_keywords)
     
     @staticmethod

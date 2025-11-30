@@ -155,8 +155,20 @@ class ClaudeAgent:
                 
             except Exception as e:
                 logger.error(f"Agent error: {e}", exc_info=True)
+                
+                # Better error message for API overload
+                error_msg = str(e)
+                if "529" in error_msg or "overloaded" in error_msg.lower():
+                    return {
+                        "response": "⚠️ Claude API is currently overloaded. Please try again in 30-60 seconds, or switch to Claude 3 Haiku model (fastest, least congested).",
+                        "status": "error",
+                        "tool_uses": tool_uses,
+                        "tool_results": tool_results
+                    }
+                
                 return {
-                    "error": str(e),
+                    "response": f"I encountered an error: {str(e)}",
+                    "status": "error",
                     "tool_uses": tool_uses,
                     "tool_results": tool_results
                 }

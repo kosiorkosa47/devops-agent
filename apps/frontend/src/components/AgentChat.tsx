@@ -5,16 +5,13 @@ import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { Select, SelectItem } from '@heroui/react'
 import { 
   PaperAirplaneIcon, 
   TrashIcon, 
   CheckCircleIcon, 
   XCircleIcon,
   WrenchScrewdriverIcon,
-  ExclamationTriangleIcon,
-  CpuChipIcon,
-  ShieldCheckIcon
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/solid'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -29,10 +26,28 @@ interface Message {
 }
 
 const CLAUDE_MODELS = [
-  { value: 'claude-sonnet-4-5-20250929', label: 'Claude 4.5 Sonnet (Latest)', description: 'Most capable, best for complex tasks' },
-  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', description: 'Fast and intelligent' },
-  { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus', description: 'Most powerful' },
-  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku', description: 'Fastest, most compact' },
+  // Claude 4.5 (Latest)
+  { value: 'claude-sonnet-4-5-20250929', label: '🚀 Claude 4.5 Sonnet', description: 'Latest & Greatest', badge: 'NEW' },
+  
+  // Claude 3.5 Family
+  { value: 'claude-3-5-sonnet-20241022', label: '⚡ Claude 3.5 Sonnet (Oct)', description: 'Fast & Intelligent', badge: 'HOT' },
+  { value: 'claude-3-5-sonnet-20240620', label: '⚡ Claude 3.5 Sonnet (June)', description: 'Stable Version' },
+  
+  // Claude 3 Opus (Most Powerful)
+  { value: 'claude-3-opus-20240229', label: '💎 Claude 3 Opus', description: 'Most Powerful', badge: 'PRO' },
+  
+  // Claude 3 Sonnet
+  { value: 'claude-3-sonnet-20240229', label: '🎯 Claude 3 Sonnet', description: 'Balanced Performance' },
+  
+  // Claude 3 Haiku (Fastest)
+  { value: 'claude-3-haiku-20240307', label: '⚡ Claude 3 Haiku', description: 'Lightning Fast', badge: 'FAST' },
+  
+  // Claude 2.1 (Legacy)
+  { value: 'claude-2.1', label: '📚 Claude 2.1', description: 'Legacy Model' },
+  { value: 'claude-2.0', label: '📚 Claude 2.0', description: 'Classic' },
+  
+  // Claude Instant (Ultra Fast)
+  { value: 'claude-instant-1.2', label: '🏃 Claude Instant 1.2', description: 'Ultra Fast', badge: 'SPEED' },
 ]
 
 const APPROVAL_MODES = [
@@ -150,98 +165,82 @@ export default function AgentChat() {
   }
 
   return (
-    <div className="w-full max-w-6xl h-[calc(100vh-120px)] bg-white rounded-xl shadow-lg flex flex-col">
+    <div className="w-full max-w-6xl h-[calc(100vh-120px)] bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 rounded-2xl shadow-2xl border border-gray-200/50 backdrop-blur-sm flex flex-col overflow-hidden">
       {/* Chat Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200/50 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-pink-600/90 animate-gradient-x"></div>
+        <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="flex items-center space-x-2">
-              <WrenchScrewdriverIcon className="w-6 h-6 text-blue-600" />
-              <h2 className="text-lg font-semibold text-gray-900">ATLAS Agentic Assistant</h2>
-              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">EXECUTION MODE</span>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center animate-pulse">
+                <WrenchScrewdriverIcon className="w-6 h-6 text-white drop-shadow-lg" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white drop-shadow-lg flex items-center gap-2">
+                  ATLAS Agentic Assistant
+                  <span className="text-2xl animate-bounce">🚀</span>
+                </h2>
+                <p className="text-xs text-white/90 drop-shadow">AI-Powered DevOps Automation</p>
+              </div>
+              <span className="px-3 py-1 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-lg animate-pulse">✨ LIVE</span>
             </div>
-            <p className="text-sm text-gray-500">I can now execute operations, not just suggest them!</p>
           </div>
           <button
             onClick={clearConversation}
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-2.5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all hover:scale-110 backdrop-blur-sm"
             title="Clear conversation"
           >
-            <TrashIcon className="w-5 h-5" />
+            <TrashIcon className="w-5 h-5 drop-shadow" />
           </button>
         </div>
         
         {/* Configuration Row */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Model Selector */}
-          <div className="flex-1">
-            <Select
-              label="Claude Model"
-              labelPlacement="outside-left"
-              placeholder="Select a model"
-              selectedKeys={[selectedModel]}
-              onSelectionChange={(keys) => setSelectedModel(Array.from(keys)[0] as string)}
-              classNames={{
-                base: "items-center",
-                label: "text-sm font-medium text-gray-700 mr-2",
-                trigger: "h-10 min-h-10",
-              }}
-              startContent={<CpuChipIcon className="w-4 h-4 text-blue-600" />}
-              size="sm"
-              variant="bordered"
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-white drop-shadow">🤖 Model:</label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="px-3 py-2 text-sm border-2 border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/90 backdrop-blur-md font-medium shadow-lg hover:bg-white transition-all"
             >
               {CLAUDE_MODELS.map((model) => (
-                <SelectItem 
-                  key={model.value} 
-                  value={model.value}
-                  description={model.description}
-                >
+                <option key={model.value} value={model.value}>
                   {model.label}
-                </SelectItem>
+                </option>
               ))}
-            </Select>
+            </select>
           </div>
           
           {/* Approval Mode Selector */}
-          <div className="flex-1">
-            <Select
-              label="Approval Mode"
-              labelPlacement="outside-left"
-              placeholder="Select mode"
-              selectedKeys={[approvalMode]}
-              onSelectionChange={(keys) => setApprovalMode(Array.from(keys)[0] as string)}
-              classNames={{
-                base: "items-center",
-                label: "text-sm font-medium text-gray-700 mr-2",
-                trigger: "h-10 min-h-10",
-              }}
-              startContent={<ShieldCheckIcon className="w-4 h-4 text-purple-600" />}
-              size="sm"
-              variant="bordered"
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-white drop-shadow">🛡️ Mode:</label>
+            <select
+              value={approvalMode}
+              onChange={(e) => setApprovalMode(e.target.value)}
+              className="px-3 py-2 text-sm border-2 border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/90 backdrop-blur-md font-medium shadow-lg hover:bg-white transition-all"
             >
               {APPROVAL_MODES.map((mode) => (
-                <SelectItem 
-                  key={mode.value} 
-                  value={mode.value}
-                  description={mode.description}
-                  startContent={<span className="text-lg">{mode.icon}</span>}
-                >
-                  {mode.label}
-                </SelectItem>
+                <option key={mode.value} value={mode.value}>
+                  {mode.icon} {mode.label}
+                </option>
               ))}
-            </Select>
+            </select>
           </div>
           
           {/* Auto-approve Toggle */}
-          <label className="flex items-center space-x-2 text-sm whitespace-nowrap">
+          <label className="flex items-center space-x-2 text-sm bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl hover:bg-white/20 transition-all cursor-pointer">
             <input
               type="checkbox"
               checked={autoApproveSafe}
               onChange={(e) => setAutoApproveSafe(e.target.checked)}
-              className="rounded"
+              className="rounded w-4 h-4 cursor-pointer"
             />
-            <span>Auto-approve safe</span>
+            <span className="font-semibold text-white drop-shadow">✨ Auto-approve</span>
           </label>
+        </div>
         </div>
       </div>
 
@@ -250,17 +249,17 @@ export default function AgentChat() {
         {messages.length === 0 && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto flex items-center justify-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl mx-auto flex items-center justify-center shadow-2xl animate-pulse">
                 <WrenchScrewdriverIcon className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-700">ATLAS Agentic Mode Activated!</h3>
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">ATLAS Agentic Mode Activated! 🎉</h3>
               <p className="text-gray-500 max-w-md">
                 I can now execute operations for you! Try asking me to check pod status, view logs, or scale deployments.
               </p>
               <div className="pt-4 grid grid-cols-2 gap-3 max-w-2xl">
                 <button
                   onClick={() => setInput("List all pods in production namespace")}
-                  className="text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm text-gray-700 transition-colors"
+                  className="text-left p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl text-sm text-gray-800 transition-all hover:scale-105 hover:shadow-lg border border-blue-200/50 font-medium"
                 >
                   🔍 List all pods in production
                 </button>
@@ -419,7 +418,7 @@ export default function AgentChat() {
           <button
             type="submit"
             disabled={!input.trim() || loading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+            className="px-8 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 disabled:from-gray-300 disabled:via-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all hover:scale-105 hover:shadow-xl flex items-center space-x-2 font-semibold shadow-lg"
           >
             <PaperAirplaneIcon className="w-5 h-5" />
             <span>Send</span>
