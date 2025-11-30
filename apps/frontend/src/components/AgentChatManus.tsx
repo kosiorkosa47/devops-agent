@@ -82,7 +82,7 @@ export default function AgentChatManus() {
 
   const addActionLog = (tool: string, action: string, status: ActionLog['status'], output?: string) => {
     const log: ActionLog = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID with timestamp + random
       timestamp: new Date(),
       tool,
       action,
