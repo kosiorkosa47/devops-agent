@@ -419,7 +419,22 @@ export default function AgentChatManus() {
               {/* Message Content */}
               <div className="max-w-none">
                 {message.role === 'assistant' ? (
-                  <div className="prose prose-invert prose-sm max-w-none prose-headings:font-semibold prose-p:text-zinc-200 prose-p:leading-7">
+                  <div className="prose prose-invert max-w-none
+                    prose-p:text-zinc-200 prose-p:leading-7 prose-p:my-3
+                    prose-headings:text-zinc-100 prose-headings:font-semibold prose-headings:mb-3 prose-headings:mt-5
+                    prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
+                    prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+                    prose-strong:text-zinc-100 prose-strong:font-bold
+                    prose-em:text-zinc-300 prose-em:italic
+                    prose-ul:my-3 prose-ul:list-disc prose-ul:pl-6 prose-ul:space-y-2
+                    prose-ol:my-3 prose-ol:list-decimal prose-ol:pl-6 prose-ol:space-y-2
+                    prose-li:text-zinc-200 prose-li:leading-7
+                    prose-blockquote:border-l-4 prose-blockquote:border-zinc-600 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-zinc-300
+                    prose-table:my-4 prose-table:border-collapse
+                    prose-th:border prose-th:border-zinc-700 prose-th:bg-zinc-800 prose-th:px-4 prose-th:py-2 prose-th:text-left
+                    prose-td:border prose-td:border-zinc-700 prose-td:px-4 prose-td:py-2
+                    prose-hr:border-zinc-700 prose-hr:my-6
+                  ">
                     <ReactMarkdown
                       components={{
                         code({ inline, className, children, ...props }: any) {
@@ -429,15 +444,51 @@ export default function AgentChatManus() {
                               style={vscDarkPlus as any}
                               language={match[1]}
                               PreTag="div"
-                              className="rounded-lg my-3"
+                              className="!my-4 !rounded-lg !text-sm"
+                              customStyle={{
+                                padding: '1rem',
+                                borderRadius: '0.5rem',
+                                fontSize: '0.875rem'
+                              }}
                               {...props}
                             >
                               {String(children).replace(/\n$/, '')}
                             </SyntaxHighlighter>
                           ) : (
-                            <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-blue-400 text-sm" {...props}>
+                            <code className="bg-zinc-800/90 px-1.5 py-0.5 rounded text-blue-400 font-mono text-sm" {...props}>
                               {children}
                             </code>
+                          )
+                        },
+                        p({ children }: any) {
+                          return <p className="mb-3 last:mb-0">{children}</p>
+                        },
+                        ul({ children }: any) {
+                          return <ul className="space-y-1.5 my-3">{children}</ul>
+                        },
+                        ol({ children }: any) {
+                          return <ol className="space-y-1.5 my-3">{children}</ol>
+                        },
+                        li({ children }: any) {
+                          return <li className="ml-4">{children}</li>
+                        },
+                        a({ href, children }: any) {
+                          return (
+                            <a 
+                              href={href} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                              {children}
+                            </a>
+                          )
+                        },
+                        blockquote({ children }: any) {
+                          return (
+                            <blockquote className="border-l-4 border-zinc-600 pl-4 my-4 italic text-zinc-400">
+                              {children}
+                            </blockquote>
                           )
                         }
                       }}
