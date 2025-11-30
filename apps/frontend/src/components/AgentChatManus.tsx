@@ -390,7 +390,21 @@ export default function AgentChatManus() {
                     </div>
                   )}
                 </div>
+                
+                {/* User Avatar */}
+                {message.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-semibold text-white">You</span>
+                  </div>
+                )}
               </div>
+              
+              {/* Timestamp for assistant */}
+              {message.role === 'assistant' && (
+                <div className="text-[10px] text-zinc-500 mt-1 ml-11">
+                  {message.timestamp.toLocaleTimeString()}
+                </div>
+              )}
 
               {/* Approval UI */}
               {message.pendingExecution && (
