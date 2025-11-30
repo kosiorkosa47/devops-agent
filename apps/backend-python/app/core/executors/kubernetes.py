@@ -188,6 +188,184 @@ class KubernetesExecutor:
             logger.error(f"Error listing deployments: {e}", exc_info=True)
             return {"error": str(e)}
     
+    async def analyze_resource_efficiency(self, namespace: str = "default") -> Dict[str, Any]:
+        """
+        Analyze resource efficiency for pods in namespace
+        Compares actual usage vs limits
+        """
+        try:
+            # Get pods
+            pods_result = await self.kubectl_get_pods(namespace=namespace)
+            if "error" in pods_result:
+                return pods_result
+            
+            # Get metrics (top pods)
+            metrics_result = await self.kubectl_top_pods(namespace=namespace)
+            if "error" in metrics_result:
+                return {"warning": "Metrics not available", "pods": pods_result["pods"]}
+            
+            recommendations = []
+            
+            for pod in pods_result.get("pods", []):
+                pod_name = pod["name"]
+                
+                # Find corresponding metrics
+                pod_metrics = next(
+                    (m for m in metrics_result.get("pods", []) if m["name"] == pod_name),
+                    None
+                )
+                
+                if not pod_metrics:
+                    continue
+                
+                # Parse resources
+                containers = pod.get("containers", [])
+                if not containers:
+                    continue
+                
+                for container in containers:
+                    limits = container.get("limits", {})
+                    requests = container.get("requests", {})
+                    
+                    cpu_limit = limits.get("cpu", "0")
+                    mem_limit = limits.get("memory", "0")
+                    
+                    # Simple CPU analysis (this is simplified)
+                    if cpu_limit and cpu_limit != "0":
+                        # Extract numeric value (very simplified)
+                        try:
+                            cpu_limit_val = float(cpu_limit.replace("m", "")) / 1000
+                            cpu_usage_val = float(pod_metrics.get("cpu", "0m").replace("m", "")) / 1000
+                            
+                            if cpu_limit_val > 0:
+                                cpu_usage_pct = (cpu_usage_val / cpu_limit_val) * 100
+                                
+                                if cpu_usage_pct < 20:
+                                    recommendations.append({
+                                        "pod": pod_name,
+                                        "container": container.get("name"),
+                                        "type": "over-provisioned-cpu",
+                                        "current_limit": cpu_limit,
+                                        "usage_percent": round(cpu_usage_pct, 2),
+                                        "recommendation": f"Consider reducing CPU limit (only using {cpu_usage_pct:.1f}%)"
+                                    })
+                                elif cpu_usage_pct > 80:
+                                    recommendations.append({
+                                        "pod": pod_name,
+                                        "container": container.get("name"),
+                                        "type": "under-provisioned-cpu",
+                                        "current_limit": cpu_limit,
+                                        "usage_percent": round(cpu_usage_pct, 2),
+                                        "recommendation": f"Consider increasing CPU limit ({cpu_usage_pct:.1f}% usage)"
+                                    })
+                        except:
+                            pass
+            
+            return {
+                "success": True,
+                "namespace": namespace,
+                "pods_analyzed": len(pods_result.get("pods", [])),
+                "recommendations": recommendations,
+                "summary": {
+                    "over_provisioned": len([r for r in recommendations if "over" in r["type"]]),
+                    "under_provisioned": len([r for r in recommendations if "under" in r["type"]])
+                }
+            }
+        
+        except Exception as e:
+            logger.error(f"Error analyzing efficiency: {e}", exc_info=True)
+            return {"error": str(e)}
+    
+    async def auto_restart_pod(self, namespace: str, pod_name: str) -> Dict[str, Any]:
+        """
+        SELF-HEALING: Automatically restart a failed pod
+        This is a destructive operation
+        """
+        try:
+            if not self.core_v1:
+                return {"error": "Kubernetes not configured"}
+            
+            # Delete the pod (it will be recreated by controller)
+            logger.info(f"AUTO-HEALING: Restarting pod {pod_name} in {namespace}")
+            
+            self.core_v1.delete_namespaced_pod(
+                name=pod_name,
+                namespace=namespace,
+                grace_period_seconds=0
+            )
+            
+            return {
+                "success": True,
+                "action": "pod_restarted",
+                "pod": pod_name,
+                "namespace": namespace,
+                "message": f"Pod {pod_name} deleted and will be recreated automatically"
+            }
+        
+        except ApiException as e:
+            return {"error": f"Kubernetes API error: {e.reason}"}
+        except Exception as e:
+            logger.error(f"Error restarting pod: {e}", exc_info=True)
+            return {"error": str(e)}
+    
+    async def auto_scale_if_needed(self, namespace: str, deployment: str, max_replicas: int = 10) -> Dict[str, Any]:
+        """
+        SELF-HEALING: Automatically scale deployment if pods are struggling
+        """
+        try:
+            # Get deployment info
+            dep_result = await self.kubectl_get_deployments(namespace=namespace)
+            if "error" in dep_result:
+                return dep_result
+            
+            # Find our deployment
+            target_dep = next(
+                (d for d in dep_result.get("deployments", []) if d["name"] == deployment),
+                None
+            )
+            
+            if not target_dep:
+                return {"error": f"Deployment {deployment} not found"}
+            
+            current_replicas = target_dep["replicas"]
+            ready_replicas = target_dep["ready_replicas"]
+            
+            # Check if we need scaling
+            if ready_replicas < current_replicas:
+                # Pods are not ready, might need more replicas
+                if current_replicas < max_replicas:
+                    new_replicas = min(current_replicas + 1, max_replicas)
+                    
+                    logger.info(f"AUTO-HEALING: Scaling {deployment} from {current_replicas} to {new_replicas}")
+                    
+                    scale_result = await self.kubectl_scale_deployment(
+                        namespace=namespace,
+                        deployment=deployment,
+                        replicas=new_replicas
+                    )
+                    
+                    return {
+                        "success": True,
+                        "action": "auto_scaled",
+                        "deployment": deployment,
+                        "old_replicas": current_replicas,
+                        "new_replicas": new_replicas,
+                        "reason": "Not all pods ready",
+                        "scale_result": scale_result
+                    }
+            
+            return {
+                "success": True,
+                "action": "no_scaling_needed",
+                "deployment": deployment,
+                "replicas": current_replicas,
+                "ready": ready_replicas
+            }
+        
+        except Exception as e:
+            logger.error(f"Error auto-scaling: {e}", exc_info=True)
+            return {"error": str(e)}
+    
     async def kubectl_scale_deployment(self, namespace: str, deployment_name: str, replicas: int) -> Dict[str, Any]:
         """⚠️ DANGEROUS: Scale deployment"""
         try:

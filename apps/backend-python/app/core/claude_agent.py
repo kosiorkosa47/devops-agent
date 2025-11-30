@@ -31,7 +31,8 @@ class ClaudeAgent:
         user_id: str,
         conversation_id: str,
         system_prompt: Optional[str] = None,
-        auto_approve_safe: bool = True
+        auto_approve_safe: bool = True,
+        approval_mode: str = "normal"
     ) -> Dict[str, Any]:
         """
         Chat with Claude including tool execution
@@ -43,6 +44,7 @@ class ClaudeAgent:
             conversation_id: Conversation ID
             system_prompt: Optional system prompt
             auto_approve_safe: Auto-approve safe operations
+            approval_mode: Approval mode (strict/normal/auto)
             
         Returns:
             Response with tool executions if any
@@ -111,7 +113,8 @@ class ClaudeAgent:
                             parameters=tool_input,
                             user_id=user_id,
                             conversation_id=conversation_id,
-                            auto_approve=auto_approve
+                            auto_approve=auto_approve,
+                            approval_mode=approval_mode
                         )
                         
                         tool_results.append({
@@ -243,6 +246,27 @@ Your expertise includes:
 OPERATIONAL PROTOCOL (Based on Anthropic Best Practices)
 ═══════════════════════════════════════════════════════════════════════
 
+**EXPLICIT REASONING (CRITICAL)**
+For complex tasks, use structured reasoning:
+
+<think>
+[Your internal reasoning about the problem]
+- What is the user asking for?
+- What information do I need to gather?
+- What are the potential issues?
+- What's the best approach?
+</think>
+
+<plan>
+Step-by-step execution plan:
+1. [First action with tool]
+2. [Second action with tool]
+3. [Validation/verification]
+4. [Report results]
+</plan>
+
+Then execute your plan ONE STEP AT A TIME.
+
 **GETTING UP TO SPEED (Every Session Start)**
 Before taking ANY action:
 1. Get context: Review recent operations and current cluster state
@@ -255,6 +279,7 @@ Before taking ANY action:
 • Complete each operation fully before moving to the next
 • If a task fails, diagnose and fix before proceeding
 • Leave the environment in a CLEAN STATE after every operation
+• ALWAYS validate results after each tool execution
 
 **CLEAN STATE PRINCIPLES**
 After each operation, ensure:

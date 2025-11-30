@@ -9,8 +9,8 @@ class ToolDefinitions:
     """Central registry of all available tools"""
     
     # Tool categories
-    SAFE_OPERATIONS = ["read", "get", "list", "describe", "logs", "status"]
-    DANGEROUS_OPERATIONS = ["delete", "destroy", "apply", "deploy", "scale", "restart", "kill"]
+    SAFE_OPERATIONS = ["read", "get", "list", "describe", "logs", "status", "analyze", "check"]
+    DANGEROUS_OPERATIONS = ["delete", "destroy", "apply", "deploy", "scale", "restart", "kill", "auto_restart", "auto_scale"]
     
     @staticmethod
     def get_kubernetes_tools() -> List[Dict[str, Any]]:
@@ -138,6 +138,47 @@ class ToolDefinitions:
                     "properties": {
                         "namespace": {"type": "string"}
                     }
+                }
+            },
+            {
+                "name": "analyze_resource_efficiency",
+                "description": "🔍 ANALYSIS: Analyze resource efficiency for pods - identifies over/under-provisioned resources and suggests optimizations",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "description": "Namespace to analyze (default: default)"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "auto_restart_pod",
+                "description": "🔧 SELF-HEALING: Automatically restart a failed pod by deleting it (will be recreated by controller). This is a destructive operation.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"},
+                        "pod_name": {"type": "string"}
+                    },
+                    "required": ["namespace", "pod_name"]
+                }
+            },
+            {
+                "name": "auto_scale_if_needed",
+                "description": "🔧 SELF-HEALING: Automatically scale deployment if pods are not ready. Intelligently adds replicas if needed (up to max).",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"},
+                        "deployment": {"type": "string"},
+                        "max_replicas": {
+                            "type": "integer",
+                            "description": "Maximum replicas to scale to (default: 10)"
+                        }
+                    },
+                    "required": ["namespace", "deployment"]
                 }
             }
         ]
@@ -271,13 +312,71 @@ class ToolDefinitions:
         ]
     
     @staticmethod
+    def get_predictive_tools() -> List[Dict[str, Any]]:
+        """Predictive operations tools"""
+        return [
+            {
+                "name": "predict_resource_exhaustion",
+                "description": "🔮 PREDICTIVE: Predict if pod will run out of resources in the next few hours based on trend analysis",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"},
+                        "pod_name": {"type": "string"},
+                        "lookahead_hours": {
+                            "type": "integer",
+                            "description": "Hours to look ahead (default: 3)"
+                        }
+                    },
+                    "required": ["namespace", "pod_name"]
+                }
+            },
+            {
+                "name": "suggest_preemptive_actions",
+                "description": "🔮 PREDICTIVE: Analyze namespace and suggest preemptive actions to prevent issues",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"}
+                    },
+                    "required": ["namespace"]
+                }
+            },
+            {
+                "name": "identify_failure_patterns",
+                "description": "🔮 PREDICTIVE: Identify failure patterns that might indicate systemic issues",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"}
+                    },
+                    "required": ["namespace"]
+                }
+            },
+            {
+                "name": "predict_scaling_needs",
+                "description": "🔮 PREDICTIVE: Predict if deployment will need scaling soon based on pod health trends",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"},
+                        "deployment": {"type": "string"},
+                        "current_replicas": {"type": "integer"}
+                    },
+                    "required": ["namespace", "deployment", "current_replicas"]
+                }
+            }
+        ]
+    
+    @staticmethod
     def get_all_tools() -> List[Dict[str, Any]]:
         """Get all available tools"""
         return (
             ToolDefinitions.get_kubernetes_tools() +
             ToolDefinitions.get_docker_tools() +
             ToolDefinitions.get_git_tools() +
-            ToolDefinitions.get_monitoring_tools()
+            ToolDefinitions.get_monitoring_tools() +
+            ToolDefinitions.get_predictive_tools()
         )
     
     @staticmethod

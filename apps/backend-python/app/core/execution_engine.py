@@ -11,6 +11,7 @@ from enum import Enum
 from app.core.tools import ToolDefinitions
 from app.core.executors.kubernetes import KubernetesExecutor
 from app.core.redis import get_redis_client
+from app.core.predictive_engine import predictive_engine
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +26,23 @@ class ExecutionStatus(str, Enum):
     FAILED = "failed"
 
 
+class ApprovalMode(str, Enum):
+    """Approval mode for tool execution"""
+    STRICT = "strict"  # Approve every operation (even safe ones)
+    NORMAL = "normal"  # Approve dangerous only (default)
+    AUTO = "auto"      # Auto-approve everything (dangerous!)
+
+
 class ExecutionEngine:
     """
     Central execution engine for all tool operations
-    Handles approval workflow and audit logging
+    Handles approval workflow, audit logging, and validation
     """
     
     def __init__(self, require_approval: bool = True):
         self.require_approval = require_approval
         self.kubernetes = KubernetesExecutor()
+        self.validation_enabled = True
         
     async def execute_tool(
         self,
@@ -41,7 +50,8 @@ class ExecutionEngine:
         parameters: Dict[str, Any],
         user_id: str,
         conversation_id: str,
-        auto_approve: bool = False
+        auto_approve: bool = False,
+        approval_mode: str = "normal"
     ) -> Dict[str, Any]:
         """
         Execute a tool with approval workflow
@@ -81,8 +91,12 @@ class ExecutionEngine:
             # Store in Redis for tracking
             await self._store_execution(execution_id, execution_record)
             
-            # Check if approval required
-            needs_approval = is_dangerous and self.require_approval and not auto_approve
+            # Check if approval required based on mode
+            needs_approval = self._needs_approval(
+                is_dangerous=is_dangerous,
+                auto_approve=auto_approve,
+                approval_mode=approval_mode
+            )
             
             if needs_approval:
                 logger.info(f"Execution {execution_id} requires approval: {tool_name}")
@@ -177,6 +191,13 @@ class ExecutionEngine:
             # Route to appropriate executor
             result = await self._route_execution(tool_name, parameters)
             
+            # Validate result if enabled
+            if self.validation_enabled:
+                validation = await self._validate_result(tool_name, result)
+                if not validation["valid"]:
+                    logger.warning(f"Validation warning for {tool_name}: {validation.get('message')}")
+                    result["validation_warning"] = validation.get("message")
+            
             # Update record with result
             execution_record["status"] = ExecutionStatus.SUCCESS
             execution_record["result"] = result
@@ -208,11 +229,78 @@ class ExecutionEngine:
                 "error": str(e)
             }
     
+    def _needs_approval(
+        self,
+        is_dangerous: bool,
+        auto_approve: bool,
+        approval_mode: str
+    ) -> bool:
+        """
+        Determine if operation needs approval based on mode
+        
+        Modes:
+        - STRICT: Approve every operation (even safe ones)
+        - NORMAL: Approve dangerous only (default)
+        - AUTO: Auto-approve everything (dangerous!)
+        """
+        if approval_mode == ApprovalMode.AUTO:
+            # Auto-approve everything
+            return False
+        
+        elif approval_mode == ApprovalMode.STRICT:
+            # Require approval for everything (unless explicitly auto-approved)
+            return not auto_approve
+        
+        else:  # NORMAL mode (default)
+            # Approve dangerous operations only
+            return is_dangerous and self.require_approval and not auto_approve
+    
+    async def _validate_result(self, tool_name: str, result: Any) -> Dict[str, Any]:
+        """
+        Validate tool execution result
+        Returns: {"valid": bool, "message": str}
+        """
+        try:
+            # Convert result to string for analysis
+            result_str = str(result).lower()
+            
+            # Check for common error indicators
+            error_indicators = ["error", "failed", "exception", "not found", "denied", "forbidden"]
+            has_error = any(indicator in result_str for indicator in error_indicators)
+            
+            if has_error:
+                return {
+                    "valid": False,
+                    "message": "Result contains error indicators. Verify operation succeeded.",
+                    "suggestion": "Check logs and pod status to confirm"
+                }
+            
+            # Check if result is empty (might indicate problem)
+            if not result or (isinstance(result, (dict, list)) and len(result) == 0):
+                return {
+                    "valid": False,
+                    "message": "Result is empty. Operation may not have produced expected output.",
+                    "suggestion": "Verify the resource exists and parameters are correct"
+                }
+            
+            # Result looks good
+            return {
+                "valid": True,
+                "message": "Result validation passed"
+            }
+            
+        except Exception as e:
+            logger.error(f"Validation error: {e}")
+            return {
+                "valid": True,  # Don't fail execution due to validation error
+                "message": f"Could not validate result: {e}"
+            }
+    
     async def _route_execution(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
         """Route execution to appropriate executor"""
         
-        # Kubernetes tools
-        if tool_name.startswith("kubectl_"):
+        # Kubernetes tools (including new analysis and self-healing tools)
+        if tool_name.startswith("kubectl_") or tool_name.startswith("analyze_") or tool_name.startswith("auto_"):
             method_name = tool_name
             method = getattr(self.kubernetes, method_name, None)
             if method:
@@ -231,9 +319,18 @@ class ExecutionEngine:
             return {"message": "Git executor not yet implemented"}
         
         # Monitoring tools
-        elif tool_name.startswith("prometheus_") or tool_name.startswith("check_") or tool_name.startswith("analyze_"):
+        elif tool_name.startswith("prometheus_") or tool_name.startswith("check_"):
             # TODO: Implement monitoring executor
             return {"message": "Monitoring executor not yet implemented"}
+        
+        # Predictive tools
+        elif tool_name.startswith("predict_") or tool_name.startswith("suggest_") or tool_name.startswith("identify_"):
+            method_name = tool_name
+            method = getattr(predictive_engine, method_name, None)
+            if method:
+                return method(**parameters)
+            else:
+                raise ValueError(f"Predictive method not found: {method_name}")
         
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
