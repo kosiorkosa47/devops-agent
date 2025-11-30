@@ -452,6 +452,6 @@ Built with these amazing open-source projects:
 
 **⭐ Star this repo if you find it useful!**
 
-**Built with ❤️ by ATLAS DevOps Agent**
+**Built with ❤️ for the DevOps community**
 
-🤖 *First AI Agent that actually executes DevOps operations, not just suggests them.*
+🤖 *A true AI agent that executes DevOps operations, not just suggests them.*
