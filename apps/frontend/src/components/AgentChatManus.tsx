@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -105,33 +105,40 @@ export default function AgentChatManus() {
     }
   }
 
+  const isResizingRef = useRef(false)
+
   const handleMouseDown = (e: React.MouseEvent) => {
+    isResizingRef.current = true
     setIsResizing(true)
     e.preventDefault()
   }
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing) return
-    const newWidth = (e.clientX / window.innerWidth) * 100
-    if (newWidth > 30 && newWidth < 70) {
-      setPanelWidth(100 - newWidth)
-    }
-  }
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizingRef.current) return
+    
+    requestAnimationFrame(() => {
+      const newWidth = (e.clientX / window.innerWidth) * 100
+      if (newWidth > 30 && newWidth < 70) {
+        setPanelWidth(100 - newWidth)
+      }
+    })
+  }, [])
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
+    isResizingRef.current = false
     setIsResizing(false)
-  }
+  }, [])
 
   useEffect(() => {
-    if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove)
-        window.removeEventListener('mouseup', handleMouseUp)
-      }
+    // Add listeners once on mount
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing])
+  }, [handleMouseMove, handleMouseUp])
 
   const formatToolAction = (toolName: string, params: any): string => {
     // Format tool actions to show readable commands
