@@ -60,9 +60,15 @@ async def agent_chat(
     try:
         user_id = current_user.get("sub", "demo-user")
         conversation_id = request.conversation_id or f"conv_{user_id}_{int(__import__('time').time())}"
+        redis = await get_redis_client()
         
-        # Get conversation history (in-memory for simple mode)
+        # Get conversation history from Redis
         conversation_history = []
+        history_key = f"conversation:{conversation_id}"
+        stored_history = await redis.get(history_key)
+        
+        if stored_history:
+            conversation_history = json.loads(stored_history)
         
         # Chat with agent (including tool execution)
         result = await claude_agent.chat_with_tools(
@@ -85,7 +91,31 @@ async def agent_chat(
             "content": result.get("response", "")
         })
         
-        # Note: Conversation history not persisted in simple mode
+        # Save conversation history to Redis (7 days expiry)
+        await redis.setex(history_key, 604800, json.dumps(conversation_history))
+        
+        # Save/update conversation metadata
+        from datetime import datetime
+        meta_key = f"conversation_meta:{user_id}:{conversation_id}"
+        existing_meta = await redis.get(meta_key)
+        
+        if existing_meta:
+            metadata = json.loads(existing_meta)
+            metadata["last_updated"] = datetime.utcnow().isoformat()
+            metadata["message_count"] = len(conversation_history)
+        else:
+            # New conversation - generate title from first message
+            title = request.message[:50] + ("..." if len(request.message) > 50 else "")
+            metadata = {
+                "conversation_id": conversation_id,
+                "title": title,
+                "created_at": datetime.utcnow().isoformat(),
+                "last_updated": datetime.utcnow().isoformat(),
+                "message_count": len(conversation_history)
+            }
+        
+        await redis.setex(meta_key, 604800, json.dumps(metadata))
+        
         # Return response
         return AgentResponse(
             response=result.get("response", ""),
@@ -191,3 +221,132 @@ async def list_available_tools(
         ],
         "total": len(tools)
     }
+
+
+@router.get("/conversations")
+async def list_conversations(
+    current_user: dict = Depends(get_current_user)
+):
+    """List all conversations for current user"""
+    try:
+        user_id = current_user.get("sub", "demo-user")
+        redis = await get_redis_client()
+        
+        # Scan for conversation metadata keys
+        conversations = []
+        pattern = f"conversation_meta:{user_id}:*"
+        
+        async for key in redis.scan_iter(match=pattern):
+            data = await redis.get(key)
+            if data:
+                conv_data = json.loads(data)
+                conversations.append(conv_data)
+        
+        # Sort by last_updated (most recent first)
+        conversations.sort(key=lambda x: x.get("last_updated", ""), reverse=True)
+        
+        return {
+            "conversations": conversations,
+            "total": len(conversations)
+        }
+        
+    except Exception as e:
+        logger.error(f"List conversations error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get a specific conversation with full history"""
+    try:
+        redis = await get_redis_client()
+        
+        # Get messages
+        history_key = f"conversation:{conversation_id}"
+        stored_history = await redis.get(history_key)
+        
+        if not stored_history:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        messages = json.loads(stored_history)
+        
+        # Get metadata
+        user_id = current_user.get("sub", "demo-user")
+        meta_key = f"conversation_meta:{user_id}:{conversation_id}"
+        meta_data = await redis.get(meta_key)
+        
+        metadata = json.loads(meta_data) if meta_data else {}
+        
+        return {
+            "conversation_id": conversation_id,
+            "messages": messages,
+            "metadata": metadata
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get conversation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a conversation"""
+    try:
+        user_id = current_user.get("sub", "demo-user")
+        redis = await get_redis_client()
+        
+        # Delete messages
+        history_key = f"conversation:{conversation_id}"
+        await redis.delete(history_key)
+        
+        # Delete metadata
+        meta_key = f"conversation_meta:{user_id}:{conversation_id}"
+        await redis.delete(meta_key)
+        
+        return {"message": "Conversation deleted successfully"}
+        
+    except Exception as e:
+        logger.error(f"Delete conversation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/conversations/{conversation_id}")
+async def update_conversation(
+    conversation_id: str,
+    title: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update conversation metadata (e.g., title)"""
+    try:
+        user_id = current_user.get("sub", "demo-user")
+        redis = await get_redis_client()
+        
+        meta_key = f"conversation_meta:{user_id}:{conversation_id}"
+        meta_data = await redis.get(meta_key)
+        
+        if not meta_data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        metadata = json.loads(meta_data)
+        
+        if title:
+            metadata["title"] = title
+        
+        # Update metadata
+        await redis.setex(meta_key, 604800, json.dumps(metadata))  # 7 days
+        
+        return metadata
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update conversation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
