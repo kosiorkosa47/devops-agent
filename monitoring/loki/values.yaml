@@ -1,0 +1,128 @@
+# Loki Stack values for Helm installation
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm upgrade --install loki grafana/loki-stack -f values.yaml -n monitoring
+
+loki:
+  enabled: true
+  
+  persistence:
+    enabled: true
+    size: 50Gi
+  
+  config:
+    auth_enabled: false
+    
+    server:
+      http_listen_port: 3100
+    
+    ingester:
+      lifecycler:
+        ring:
+          kvstore:
+            store: inmemory
+          replication_factor: 1
+      chunk_idle_period: 5m
+      chunk_retain_period: 30s
+      max_chunk_age: 1h
+    
+    schema_config:
+      configs:
+        - from: 2024-01-01
+          store: boltdb-shipper
+          object_store: s3
+          schema: v11
+          index:
+            prefix: loki_index_
+            period: 24h
+    
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /loki/index
+        cache_location: /loki/cache
+        shared_store: s3
+      
+      # S3 configuration (MinIO)
+      aws:
+        s3: s3://minioadmin:minioadmin@minio.storage.svc.cluster.local:9000/loki
+        s3forcepathstyle: true
+    
+    limits_config:
+      enforce_metric_name: false
+      reject_old_samples: true
+      reject_old_samples_max_age: 168h  # 7 days
+      retention_period: 744h  # 31 days
+    
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 744h  # 31 days
+  
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+promtail:
+  enabled: true
+  
+  config:
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+    
+    positions:
+      filename: /tmp/positions.yaml
+    
+    scrape_configs:
+      # Kubernetes pods
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        
+        pipeline_stages:
+          - docker: {}
+        
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node_name
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          - replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+      
+      # System logs
+      - job_name: system
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: varlogs
+              __path__: /var/log/*.log
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Fluent Bit (alternative to Promtail)
+fluent-bit:
+  enabled: false
+
+grafana:
+  enabled: false  # We use Grafana from prometheus-stack
+
+# Service monitors
+serviceMonitor:
+  enabled: true

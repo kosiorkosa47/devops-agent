@@ -1,0 +1,100 @@
+---
+# Infisical Kubernetes Operator
+# Automatically syncs secrets from Infisical to Kubernetes secrets
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infisical-operator
+  namespace: security
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: infisical-operator
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["secrets.infisical.com"]
+  resources: ["infisicalsecrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["secrets.infisical.com"]
+  resources: ["infisicalsecrets/status"]
+  verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: infisical-operator
+subjects:
+- kind: ServiceAccount
+  name: infisical-operator
+  namespace: security
+roleRef:
+  kind: ClusterRole
+  name: infisical-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical-operator
+  namespace: security
+  labels:
+    app: infisical-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: infisical-operator
+  template:
+    metadata:
+      labels:
+        app: infisical-operator
+    spec:
+      serviceAccountName: infisical-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: operator
+        image: infisical/kubernetes-operator:latest
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: INFISICAL_URL
+          value: "https://secrets.yourdomain.com"
+---
+# Example InfisicalSecret CRD usage
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: app-secrets
+  namespace: production
+spec:
+  hostAPI: https://secrets.yourdomain.com
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      secretsScope:
+        projectSlug: "devops-agent"
+        envSlug: "production"
+      credentialsRef:
+        secretName: infisical-auth
+        secretNamespace: production
+  managedSecretReference:
+    secretName: app-secrets
+    secretType: Opaque
+    creationPolicy: Orphan

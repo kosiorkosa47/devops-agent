@@ -1,0 +1,172 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: application-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+    # ========== APPLICATION HEALTH ==========
+    - name: application.health
+      interval: 30s
+      rules:
+        - alert: PodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total{namespace=~"production|staging"}[15m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 15 minutes"
+        
+        - alert: PodNotReady
+          expr: sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed",namespace=~"production|staging"}) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} not ready"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been in {{ $labels.phase }} state for more than 10 minutes"
+        
+        - alert: DeploymentReplicasMismatch
+          expr: kube_deployment_spec_replicas{namespace=~"production|staging"} != kube_deployment_status_replicas_available{namespace=~"production|staging"}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} replicas mismatch"
+            description: "Deployment {{ $labels.deployment }} in namespace {{ $labels.namespace }} has {{ $value }} replicas available but {{ $labels.spec_replicas }} expected"
+    
+    # ========== RESOURCE USAGE ==========
+    - name: application.resources
+      interval: 30s
+      rules:
+        - alert: HighCPUUsage
+          expr: sum(rate(container_cpu_usage_seconds_total{namespace=~"production|staging",container!=""}[5m])) by (namespace, pod, container) / sum(container_spec_cpu_quota{namespace=~"production|staging",container!=""}/container_spec_cpu_period{namespace=~"production|staging",container!=""}) by (namespace, pod, container) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage in {{ $labels.pod }}"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} ({{ $labels.namespace }}) is using {{ $value | humanizePercentage }} of CPU limit"
+        
+        - alert: HighMemoryUsage
+          expr: sum(container_memory_working_set_bytes{namespace=~"production|staging",container!=""}) by (namespace, pod, container) / sum(container_spec_memory_limit_bytes{namespace=~"production|staging",container!=""}) by (namespace, pod, container) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage in {{ $labels.pod }}"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} ({{ $labels.namespace }}) is using {{ $value | humanizePercentage }} of memory limit"
+        
+        - alert: ContainerOOMKilled
+          expr: sum(kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace=~"production|staging"}) by (namespace, pod, container) > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Container {{ $labels.container }} was OOM killed"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} ({{ $labels.namespace }}) was killed due to out of memory"
+    
+    # ========== APPLICATION ERRORS ==========
+    - name: application.errors
+      interval: 30s
+      rules:
+        - alert: HighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5..",namespace=~"production|staging"}[5m])) by (namespace, service) / sum(rate(http_requests_total{namespace=~"production|staging"}[5m])) by (namespace, service) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate for {{ $labels.service }}"
+            description: "Service {{ $labels.service }} in {{ $labels.namespace }} has {{ $value | humanizePercentage }} error rate (>5%)"
+        
+        - alert: HighLatency
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=~"production|staging"}[5m])) by (le, namespace, service)) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency for {{ $labels.service }}"
+            description: "Service {{ $labels.service }} in {{ $labels.namespace }} has P95 latency of {{ $value }}s (>1s)"
+    
+    # ========== STORAGE ==========
+    - name: storage
+      interval: 30s
+      rules:
+        - alert: PersistentVolumeFillingUp
+          expr: (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes) < 0.1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} filling up"
+            description: "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} has only {{ $value | humanizePercentage }} space remaining"
+        
+        - alert: PersistentVolumeFillingUpCritical
+          expr: (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes) < 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} almost full"
+            description: "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} has only {{ $value | humanizePercentage }} space remaining"
+    
+    # ========== DATABASE ==========
+    - name: database
+      interval: 30s
+      rules:
+        - alert: PostgreSQLDown
+          expr: pg_up == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL instance {{ $labels.instance }} is down"
+            description: "PostgreSQL database is not responding"
+        
+        - alert: PostgreSQLHighConnections
+          expr: sum(pg_stat_database_numbackends) by (instance) / sum(pg_settings_max_connections) by (instance) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PostgreSQL high connection usage"
+            description: "PostgreSQL instance {{ $labels.instance }} is using {{ $value | humanizePercentage }} of max connections"
+    
+    # ========== SLO ALERTS (99.9% uptime target) ==========
+    - name: slo
+      interval: 30s
+      rules:
+        - alert: SLOBudgetBurn
+          expr: |
+            (
+              1 - (
+                sum(rate(http_requests_total{status=~"2..|3..",namespace="production"}[1h]))
+                /
+                sum(rate(http_requests_total{namespace="production"}[1h]))
+              )
+            ) > 0.001
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "SLO budget burning too fast"
+            description: "Error rate is {{ $value | humanizePercentage }} which exceeds our 99.9% SLO target"
+        
+        - alert: SLOBudgetExhausted
+          expr: |
+            (
+              1 - (
+                sum(rate(http_requests_total{status=~"2..|3..",namespace="production"}[30d]))
+                /
+                sum(rate(http_requests_total{namespace="production"}[30d]))
+              )
+            ) > 0.001
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Monthly SLO budget exhausted"
+            description: "We have exceeded our 99.9% SLO budget for the month"

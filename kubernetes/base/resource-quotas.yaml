@@ -1,0 +1,73 @@
+---
+# Development environment - generous limits
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev-quota
+  namespace: dev
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+---
+# Staging environment - moderate limits
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: staging-quota
+  namespace: staging
+spec:
+  hard:
+    requests.cpu: "15"
+    requests.memory: 30Gi
+    limits.cpu: "30"
+    limits.memory: 60Gi
+    persistentvolumeclaims: "15"
+    services.loadbalancers: "2"
+---
+# Production environment - highest limits
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: production-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "30"
+    requests.memory: 60Gi
+    limits.cpu: "60"
+    limits.memory: 120Gi
+    persistentvolumeclaims: "20"
+    services.loadbalancers: "3"
+---
+# Monitoring namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: monitoring-quota
+  namespace: monitoring
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    persistentvolumeclaims: "10"
+---
+# Data namespace (databases, queues)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: data-quota
+  namespace: data
+spec:
+  hard:
+    requests.cpu: "12"
+    requests.memory: 32Gi
+    limits.cpu: "24"
+    limits.memory: 64Gi
+    persistentvolumeclaims: "20"

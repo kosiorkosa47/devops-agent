@@ -1,0 +1,165 @@
+---
+# Infisical - Self-hosted secrets management
+# PostgreSQL database required (deployed separately)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infisical
+  namespace: infisical
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infisical-config
+  namespace: infisical
+data:
+  SITE_URL: "https://secrets.yourdomain.com"
+  TELEMETRY_ENABLED: "false"
+  ENCRYPTION_KEY: "change-me-to-32-char-secret!"  # Change this!
+  AUTH_SECRET: "change-me-to-another-secret!"     # Change this!
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-db
+  namespace: infisical
+type: Opaque
+stringData:
+  DB_CONNECTION_URI: "postgresql://infisical:changeme@postgresql.data.svc.cluster.local:5432/infisical"
+  REDIS_URL: "redis://redis.data.svc.cluster.local:6379"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical
+  namespace: infisical
+  labels:
+    app: infisical
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: infisical
+  template:
+    metadata:
+      labels:
+        app: infisical
+    spec:
+      serviceAccountName: infisical
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: infisical
+        image: infisical/infisical:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        envFrom:
+        - configMapRef:
+            name: infisical-config
+        - secretRef:
+            name: infisical-db
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /.cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infisical
+  namespace: infisical
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: infisical
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: infisical
+  namespace: infisical
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - secrets.yourdomain.com
+    secretName: infisical-tls
+  rules:
+  - host: secrets.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: infisical
+            port:
+              number: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: infisical
+  namespace: infisical
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: infisical
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

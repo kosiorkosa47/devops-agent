@@ -1,0 +1,313 @@
+# GitLab CI/CD Pipeline - DevOps Agent
+# Multi-language support: Next.js, Python, Rust
+# Security-first approach with comprehensive scanning
+
+variables:
+  # Docker
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  
+  # Registry
+  REGISTRY: ${CI_REGISTRY}
+  IMAGE_NAME: ${CI_REGISTRY_IMAGE}
+  
+  # Kubernetes
+  KUBE_NAMESPACE_DEV: dev
+  KUBE_NAMESPACE_STAGING: staging
+  KUBE_NAMESPACE_PROD: production
+  
+  # Security scanning
+  TRIVY_VERSION: "0.48.0"
+  TRIVY_SEVERITY: "CRITICAL,HIGH"
+
+# Pipeline stages
+stages:
+  - validate
+  - build
+  - test
+  - security
+  - package
+  - deploy
+  - verify
+
+# Templates and reusable configs
+.docker_login: &docker_login
+  before_script:
+    - echo ${CI_REGISTRY_PASSWORD} | docker login -u ${CI_REGISTRY_USER} --password-stdin ${CI_REGISTRY}
+
+.kubectl_config: &kubectl_config
+  before_script:
+    - kubectl config set-cluster k8s --server="${KUBE_URL}"
+    - kubectl config set-credentials gitlab --token="${KUBE_TOKEN}"
+    - kubectl config set-context default --cluster=k8s --user=gitlab
+    - kubectl config use-context default
+
+# ==================== VALIDATE STAGE ====================
+
+lint:code:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - npm ci
+    - npm run lint
+  only:
+    - merge_requests
+    - main
+
+lint:terraform:
+  stage: validate
+  image: hashicorp/terraform:1.6
+  script:
+    - cd terraform
+    - terraform fmt -check -recursive
+    - terraform validate
+  only:
+    changes:
+      - terraform/**/*
+
+lint:yaml:
+  stage: validate
+  image: cytopia/yamllint:latest
+  script:
+    - yamllint -c .yamllint kubernetes/
+  only:
+    changes:
+      - kubernetes/**/*
+
+# ==================== BUILD STAGE ====================
+
+build:nextjs:
+  stage: build
+  image: node:20-alpine
+  script:
+    - cd apps/frontend
+    - npm ci
+    - npm run build
+    - npm run test
+  artifacts:
+    paths:
+      - apps/frontend/.next
+      - apps/frontend/out
+    expire_in: 1 hour
+  only:
+    changes:
+      - apps/frontend/**/*
+
+build:python:
+  stage: build
+  image: python:3.12-slim
+  script:
+    - cd apps/backend-python
+    - pip install poetry
+    - poetry install
+    - poetry build
+    - poetry run pytest
+  artifacts:
+    paths:
+      - apps/backend-python/dist
+    expire_in: 1 hour
+  only:
+    changes:
+      - apps/backend-python/**/*
+
+build:rust:
+  stage: build
+  image: rust:1.75-alpine
+  script:
+    - cd apps/backend-rust
+    - cargo build --release
+    - cargo test --release
+  artifacts:
+    paths:
+      - apps/backend-rust/target/release
+    expire_in: 1 hour
+  only:
+    changes:
+      - apps/backend-rust/**/*
+
+# ==================== SECURITY STAGE ====================
+
+security:trivy-fs:
+  stage: security
+  image: aquasec/trivy:${TRIVY_VERSION}
+  script:
+    - trivy fs --severity ${TRIVY_SEVERITY} --exit-code 1 .
+  allow_failure: false
+
+security:gitleaks:
+  stage: security
+  image: zricethezav/gitleaks:latest
+  script:
+    - gitleaks detect --source . -v --no-git
+  allow_failure: false
+
+security:checkov:
+  stage: security
+  image: bridgecrew/checkov:latest
+  script:
+    - checkov -d terraform/ --framework terraform
+    - checkov -d kubernetes/ --framework kubernetes
+  allow_failure: true
+
+security:semgrep:
+  stage: security
+  image: returntocorp/semgrep:latest
+  script:
+    - semgrep --config=auto --error .
+  allow_failure: true
+
+security:dependency-check:
+  stage: security
+  image: node:20-alpine
+  script:
+    - npm audit --audit-level=high
+    - cd apps/backend-python && pip-audit
+  allow_failure: true
+
+# ==================== PACKAGE STAGE ====================
+
+package:nextjs:
+  stage: package
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  script:
+    - cd apps/frontend
+    - |
+      docker build \
+        --build-arg NODE_ENV=production \
+        -t ${IMAGE_NAME}/frontend:${CI_COMMIT_SHORT_SHA} \
+        -t ${IMAGE_NAME}/frontend:latest \
+        .
+    - docker push ${IMAGE_NAME}/frontend:${CI_COMMIT_SHORT_SHA}
+    - docker push ${IMAGE_NAME}/frontend:latest
+    # Scan the built image
+    - |
+      docker run --rm \
+        aquasec/trivy:${TRIVY_VERSION} \
+        image --severity ${TRIVY_SEVERITY} \
+        --exit-code 1 \
+        ${IMAGE_NAME}/frontend:${CI_COMMIT_SHORT_SHA}
+  only:
+    - main
+    - develop
+
+package:python:
+  stage: package
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  script:
+    - cd apps/backend-python
+    - |
+      docker build \
+        -t ${IMAGE_NAME}/backend-python:${CI_COMMIT_SHORT_SHA} \
+        -t ${IMAGE_NAME}/backend-python:latest \
+        .
+    - docker push ${IMAGE_NAME}/backend-python:${CI_COMMIT_SHORT_SHA}
+    - docker push ${IMAGE_NAME}/backend-python:latest
+  only:
+    - main
+    - develop
+
+package:rust:
+  stage: package
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  script:
+    - cd apps/backend-rust
+    - |
+      docker build \
+        -t ${IMAGE_NAME}/backend-rust:${CI_COMMIT_SHORT_SHA} \
+        -t ${IMAGE_NAME}/backend-rust:latest \
+        .
+    - docker push ${IMAGE_NAME}/backend-rust:${CI_COMMIT_SHORT_SHA}
+    - docker push ${IMAGE_NAME}/backend-rust:latest
+  only:
+    - main
+    - develop
+
+# ==================== DEPLOY STAGE ====================
+
+deploy:dev:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  <<: *kubectl_config
+  script:
+    - kubectl set image deployment/frontend frontend=${IMAGE_NAME}/frontend:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_DEV}
+    - kubectl set image deployment/backend-python backend-python=${IMAGE_NAME}/backend-python:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_DEV}
+    - kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE_DEV} --timeout=5m
+    - kubectl rollout status deployment/backend-python -n ${KUBE_NAMESPACE_DEV} --timeout=5m
+  environment:
+    name: development
+    url: https://dev.yourdomain.com
+  only:
+    - develop
+  when: on_success
+
+deploy:staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  <<: *kubectl_config
+  script:
+    - kubectl set image deployment/frontend frontend=${IMAGE_NAME}/frontend:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_STAGING}
+    - kubectl set image deployment/backend-python backend-python=${IMAGE_NAME}/backend-python:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_STAGING}
+    - kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE_STAGING} --timeout=5m
+    - kubectl rollout status deployment/backend-python -n ${KUBE_NAMESPACE_STAGING} --timeout=5m
+  environment:
+    name: staging
+    url: https://staging.yourdomain.com
+  only:
+    - main
+  when: manual
+
+deploy:production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  <<: *kubectl_config
+  script:
+    - kubectl set image deployment/frontend frontend=${IMAGE_NAME}/frontend:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_PROD}
+    - kubectl set image deployment/backend-python backend-python=${IMAGE_NAME}/backend-python:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_PROD}
+    - kubectl set image deployment/backend-rust backend-rust=${IMAGE_NAME}/backend-rust:${CI_COMMIT_SHORT_SHA} -n ${KUBE_NAMESPACE_PROD}
+    - kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE_PROD} --timeout=10m
+    - kubectl rollout status deployment/backend-python -n ${KUBE_NAMESPACE_PROD} --timeout=10m
+    - kubectl rollout status deployment/backend-rust -n ${KUBE_NAMESPACE_PROD} --timeout=10m
+  environment:
+    name: production
+    url: https://yourdomain.com
+  only:
+    - tags
+  when: manual
+
+# Rollback job
+rollback:production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  <<: *kubectl_config
+  script:
+    - kubectl rollout undo deployment/frontend -n ${KUBE_NAMESPACE_PROD}
+    - kubectl rollout undo deployment/backend-python -n ${KUBE_NAMESPACE_PROD}
+    - kubectl rollout undo deployment/backend-rust -n ${KUBE_NAMESPACE_PROD}
+  environment:
+    name: production
+    action: rollback
+  when: manual
+  only:
+    - tags
+
+# ==================== VERIFY STAGE ====================
+
+verify:health-check:
+  stage: verify
+  image: curlimages/curl:latest
+  script:
+    - sleep 30  # Wait for deployment to stabilize
+    - curl -f https://${CI_ENVIRONMENT_URL}/health || exit 1
+    - curl -f https://${CI_ENVIRONMENT_URL}/api/health || exit 1
+  only:
+    - main
+    - tags
