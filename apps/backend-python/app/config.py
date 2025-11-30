@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     
     # AI Settings
     ANTHROPIC_API_KEY: str
-    CLAUDE_MODEL: str = "claude-sonnet-4-5"  # Claude Sonnet 4.5 (Latest - Best Coding Model)
+    CLAUDE_MODEL: str = "claude-sonnet-4-5-20250929"  # Production: Claude Sonnet 4.5 (Sept 29, 2025)
     CLAUDE_MAX_TOKENS: int = 4096
     CLAUDE_TEMPERATURE: float = 0.7
     

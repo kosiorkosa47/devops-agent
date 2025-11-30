@@ -37,16 +37,20 @@ interface ActionLog {
 }
 
 const CLAUDE_MODELS = [
+  // Claude 4.5 Family (Latest - Production IDs)
+  { value: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5', badge: 'Best Coding & Agents' },
+  { value: 'claude-haiku-4-5-20251015', label: 'Claude Haiku 4.5', badge: 'Fast Executor' },
+  
   // Claude 4.x Family
-  { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', badge: 'Latest - Best Coding' },
-  { value: 'claude-opus-4-1-20250805', label: 'Claude Opus 4.1', badge: 'Most Powerful' },
+  { value: 'claude-opus-4-1-20250805', label: 'Claude Opus 4.1', badge: 'Deep Thinker' },
   { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
-  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', badge: 'Recommended' },
-  // Claude 3.x Family
+  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+  
+  // Claude 3.x Family (Legacy)
   { value: 'claude-3-7-sonnet-20250219', label: 'Claude Sonnet 3.7' },
   { value: 'claude-3-5-sonnet-20241022', label: 'Claude Sonnet 3.5 v2' },
-  { value: 'claude-3-5-haiku-20241022', label: 'Claude Haiku 3.5', badge: 'Fast' },
-  { value: 'claude-3-haiku-20240307', label: 'Claude Haiku 3', badge: 'Fastest' },
+  { value: 'claude-3-5-haiku-20241022', label: 'Claude Haiku 3.5' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude Haiku 3' },
 ]
 
 export default function AgentChatManus() {
@@ -54,7 +58,7 @@ export default function AgentChatManus() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
-  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-5-20250929')
   const [approvalMode, setApprovalMode] = useState('normal')
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([])
   const [isPaused, setIsPaused] = useState(false)
