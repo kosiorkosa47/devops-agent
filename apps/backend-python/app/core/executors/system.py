@@ -305,6 +305,58 @@ class SystemExecutor:
             summary.append("❌ kubectl not installed")
         
         return "\n".join(summary)
+    
+    async def execute_powershell_command(self, command: str, timeout: int = 300) -> Dict[str, Any]:
+        """Execute a PowerShell command"""
+        if not self.is_windows:
+            return {
+                "success": False,
+                "error": "PowerShell is only available on Windows systems"
+            }
+        
+        # Validate timeout
+        if timeout > 600:
+            timeout = 600
+        
+        logger.info(f"Executing PowerShell command: {command[:100]}...")
+        
+        # Execute via PowerShell
+        ps_command = f'powershell -NoProfile -Command "{command}"'
+        result = await self.execute_command(ps_command, timeout=timeout)
+        
+        return {
+            "success": result["success"],
+            "output": result.get("stdout", ""),
+            "error": result.get("stderr", ""),
+            "exit_code": result.get("exit_code", -1),
+            "command": command
+        }
+    
+    async def execute_cmd_command(self, command: str, timeout: int = 300) -> Dict[str, Any]:
+        """Execute a CMD command"""
+        if not self.is_windows:
+            return {
+                "success": False,
+                "error": "CMD is only available on Windows systems"
+            }
+        
+        # Validate timeout
+        if timeout > 600:
+            timeout = 600
+        
+        logger.info(f"Executing CMD command: {command[:100]}...")
+        
+        # Execute via CMD
+        cmd_command = f'cmd /c "{command}"'
+        result = await self.execute_command(cmd_command, timeout=timeout)
+        
+        return {
+            "success": result["success"],
+            "output": result.get("stdout", ""),
+            "error": result.get("stderr", ""),
+            "exit_code": result.get("exit_code", -1),
+            "command": command
+        }
 
 
 # Global instance

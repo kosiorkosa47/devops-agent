@@ -470,6 +470,42 @@ class ToolDefinitions:
                     },
                     "required": ["tool_name"]
                 }
+            },
+            {
+                "name": "execute_powershell_command",
+                "description": "⚠️ Execute a PowerShell command on the Windows system. Use for system administration, file operations, and Windows-specific tasks. DANGEROUS - requires approval.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "PowerShell command to execute (e.g., 'Get-Process', 'Get-Service', 'Test-Path')"
+                        },
+                        "timeout": {
+                            "type": "integer",
+                            "description": "Timeout in seconds (default: 300, max: 600)"
+                        }
+                    },
+                    "required": ["command"]
+                }
+            },
+            {
+                "name": "execute_cmd_command",
+                "description": "⚠️ Execute a CMD/batch command on Windows. Use for simple file operations, directory listings, and legacy Windows commands. DANGEROUS - requires approval.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "CMD command to execute (e.g., 'dir', 'type file.txt', 'echo hello')"
+                        },
+                        "timeout": {
+                            "type": "integer",
+                            "description": "Timeout in seconds (default: 300, max: 600)"
+                        }
+                    },
+                    "required": ["command"]
+                }
             }
         ]
     
@@ -489,6 +525,10 @@ class ToolDefinitions:
     @staticmethod
     def is_dangerous_operation(tool_name: str) -> bool:
         """Check if a tool requires approval"""
+        # Command execution is ALWAYS dangerous - requires approval
+        if tool_name in ["execute_powershell_command", "execute_cmd_command"]:
+            return True
+        
         # Installation tools are considered safe (only install, don't modify existing)
         safe_install_tools = ["install_minikube", "install_kubectl", "check_tool_installed", "get_cluster_status"]
         if tool_name in safe_install_tools:

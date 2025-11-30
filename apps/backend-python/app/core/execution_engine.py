@@ -311,7 +311,8 @@ class ExecutionEngine:
         """
         # System/Infrastructure operations
         if tool_name in ["install_minikube", "install_kubectl", "start_minikube", 
-                        "stop_minikube", "get_cluster_status", "check_tool_installed"]:
+                        "stop_minikube", "get_cluster_status", "check_tool_installed",
+                        "execute_powershell_command", "execute_cmd_command"]:
             method = getattr(system_executor, tool_name, None)
             if not method:
                 raise ValueError(f"Unknown system operation: {tool_name}")
