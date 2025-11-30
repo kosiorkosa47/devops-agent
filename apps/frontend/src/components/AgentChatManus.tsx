@@ -333,78 +333,61 @@ export default function AgentChatManus() {
           )}
 
           {messages.map((message, index) => (
-            <div key={index} className="group">
-              <div className={`flex gap-3 ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}>
-                {/* Avatar */}
-                {message.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center flex-shrink-0">
-                    <CpuChipIcon className="w-5 h-5 text-white" />
-                  </div>
-                )}
-                
-                <div className={`max-w-[75%] ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-2xl px-4 py-3'
-                    : message.role === 'system'
-                    ? 'bg-amber-900/20 border border-amber-600/30 text-amber-200 rounded-xl px-4 py-3'
-                    : 'text-zinc-100 py-1'
+            <div key={index} className="group py-6 px-4 hover:bg-zinc-900/30 transition-colors">
+              {/* Role Label */}
+              <div className="mb-2">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${
+                  message.role === 'user' ? 'text-blue-400' : 'text-zinc-400'
                 }`}>
-                  {message.role === 'assistant' ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-headings:font-semibold prose-p:text-zinc-100 prose-p:leading-relaxed">
-                      <ReactMarkdown
-                        components={{
-                          code({ node, inline, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || '')
-                            return !inline && match ? (
-                              <SyntaxHighlighter
-                                style={vscDarkPlus}
-                                language={match[1]}
-                                PreTag="div"
-                                className="rounded-lg my-2"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-blue-400" {...props}>
-                                {children}
-                              </code>
-                            )
-                          }
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                      {isStreaming && index === messages.length - 1 && (
-                        <span className="inline-block w-1 h-4 bg-blue-500 ml-1 animate-pulse"></span>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                  )}
-                  {message.role === 'user' && (
-                    <div className="text-[10px] mt-2 opacity-60">
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  )}
-                </div>
-                
-                {/* User Avatar */}
-                {message.role === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-white">You</span>
+                  {message.role === 'user' ? 'You' : 'ATLAS'}
+                </span>
+              </div>
+              
+              {/* Message Content */}
+              <div className="max-w-none">
+                {message.role === 'assistant' ? (
+                  <div className="prose prose-invert prose-sm max-w-none prose-headings:font-semibold prose-p:text-zinc-200 prose-p:leading-7">
+                    <ReactMarkdown
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || '')
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              style={vscDarkPlus}
+                              language={match[1]}
+                              PreTag="div"
+                              className="rounded-lg my-3"
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-blue-400 text-sm" {...props}>
+                              {children}
+                            </code>
+                          )
+                        }
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                    {isStreaming && index === messages.length - 1 && (
+                      <span className="inline-block w-0.5 h-5 bg-blue-500 ml-1 animate-pulse"></span>
+                    )}
                   </div>
+                ) : message.role === 'system' ? (
+                  <div className="bg-amber-900/10 border-l-2 border-amber-600 px-4 py-3 rounded">
+                    <p className="text-sm text-amber-200 leading-relaxed">{message.content}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-200 leading-7 whitespace-pre-wrap">{message.content}</p>
                 )}
               </div>
               
-              {/* Timestamp for assistant */}
-              {message.role === 'assistant' && (
-                <div className="text-[10px] text-zinc-500 mt-1 ml-11">
-                  {message.timestamp.toLocaleTimeString()}
-                </div>
-              )}
+              {/* Timestamp */}
+              <div className="text-[10px] text-zinc-600 mt-2">
+                {message.timestamp.toLocaleTimeString()}
+              </div>
 
               {/* Approval UI */}
               {message.pendingExecution && (

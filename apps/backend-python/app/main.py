@@ -29,16 +29,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """Application lifespan events"""
     # Startup
     logger.info("Starting DevOps Agent Backend...")
-    await init_db()
-    await init_redis()
+    try:
+        await init_db()
+        logger.info("Database connected")
+    except Exception as e:
+        logger.warning(f"Database connection failed (optional): {e}")
+    
+    try:
+        await init_redis()
+        logger.info("Redis connected")
+    except Exception as e:
+        logger.warning(f"Redis connection failed (optional): {e}")
+    
     logger.info("Backend started successfully")
     
     yield
     
     # Shutdown
     logger.info("Shutting down...")
-    await close_db()
-    await close_redis()
+    try:
+        await close_db()
+        await close_redis()
+    except Exception:
+        pass
     logger.info("Shutdown complete")
 
 
