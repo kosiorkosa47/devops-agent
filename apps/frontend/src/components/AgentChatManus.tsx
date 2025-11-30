@@ -39,7 +39,7 @@ interface ActionLog {
 const CLAUDE_MODELS = [
   // Claude 4.5 Family (Latest - Production IDs)
   { value: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5', badge: 'Best Coding & Agents' },
-  { value: 'claude-haiku-4-5-20251015', label: 'Claude Haiku 4.5', badge: 'Fast Executor' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', badge: 'Fast Executor' },
   
   // Claude 4.x Family
   { value: 'claude-opus-4-1-20250805', label: 'Claude Opus 4.1', badge: 'Deep Thinker' },

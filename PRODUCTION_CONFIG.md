@@ -13,8 +13,8 @@ This application uses **production-ready model IDs with exact snapshot dates** a
    - Context: 200K (1M preview)
    - Default model
 
-2. **Claude Haiku 4.5** - `claude-haiku-4-5-20251015`
-   - Release: Oct 15, 2025
+2. **Claude Haiku 4.5** - `claude-haiku-4-5-20251001`
+   - Release: Oct 1, 2025
    - Best for: Fast execution, sub-agents
    - Performance: 90% of Sonnet at 20% cost
    - Context: 200K
