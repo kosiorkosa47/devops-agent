@@ -34,7 +34,14 @@ class Settings(BaseSettings):
     REDIS_MAX_CONNECTIONS: int = 10
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "https://yourdomain.com"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "https://yourdomain.com"
+    ]
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
