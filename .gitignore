@@ -112,6 +112,12 @@ Desktop.ini
 !docs/examples/*.crt
 !docs/examples/*.key
 
-# Personal notes (keep progress tracking)
-# !atlas-progress.txt
-# !devops-tasks.json
+# Internal/Development files (not for public repo)
+atlas-progress.txt
+PROJECT_COMPLETION_REPORT.md
+GITHUB_SETUP.md
+devops-agent-windsurf-prompt.md
+*.draft.md
+notes.md
+TODO.md
+NOTES.md

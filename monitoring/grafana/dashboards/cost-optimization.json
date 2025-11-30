@@ -163,7 +163,7 @@
             "expr": "(increase(claude_api_input_tokens_total[24h]) * 0.003 / 1000) + (increase(claude_api_output_tokens_total[24h]) * 0.015 / 1000)"
           }
         ],
-        "description": "Based on Claude 3.5 Sonnet pricing"
+        "description": "Based on Claude 4.5 Sonnet pricing"
       },
       {
         "id": 11,

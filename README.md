@@ -46,7 +46,7 @@ User: *Gets results immediately*
 
 ### 🤖 Agentic Execution Engine
 - **20+ DevOps Tools** - Kubernetes, Docker, Git, Monitoring operations
-- **Function Calling** - Claude 3.5 Sonnet with tool use
+- **Function Calling** - Claude 4.5 Sonnet with tool use
 - **Approval Workflow** - Safe operations auto-execute, dangerous ones require approval
 - **Audit Logging** - Every execution logged with timestamps, user, status
 - **Tool Chaining** - Multi-step operations executed automatically
