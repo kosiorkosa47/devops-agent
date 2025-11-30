@@ -13,7 +13,11 @@ import {
   XCircleIcon,
   ClockIcon,
   CommandLineIcon,
-  CpuChipIcon
+  CpuChipIcon,
+  Bars3Icon,
+  PlusIcon,
+  TrashIcon,
+  ChatBubbleLeftIcon
 } from '@heroicons/react/24/solid'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -67,6 +71,9 @@ export default function AgentChatManus() {
   const [isResizing, setIsResizing] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [showSidebar, setShowSidebar] = useState(false)
+  const [conversations, setConversations] = useState<any[]>([])
+  const [loadingConversations, setLoadingConversations] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const actionsEndRef = useRef<HTMLDivElement>(null)
@@ -88,6 +95,75 @@ export default function AgentChatManus() {
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
     }
   }, [input])
+
+  // Load conversations on mount
+  useEffect(() => {
+    if (showSidebar) {
+      loadConversations()
+    }
+  }, [showSidebar])
+
+  const loadConversations = async () => {
+    try {
+      setLoadingConversations(true)
+      const response = await axios.get(`${API_URL}/api/agent/conversations`)
+      setConversations(response.data.conversations || [])
+    } catch (error) {
+      console.error('Failed to load conversations:', error)
+    } finally {
+      setLoadingConversations(false)
+    }
+  }
+
+  const createNewChat = () => {
+    setMessages([])
+    setConversationId(null)
+    setActionLogs([])
+    setInput('')
+    setShowSidebar(false)
+  }
+
+  const loadConversation = async (convId: string) => {
+    try {
+      setLoading(true)
+      const response = await axios.get(`${API_URL}/api/agent/conversations/${convId}`)
+      
+      // Convert messages to proper format with Date objects
+      const loadedMessages = response.data.messages.map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp || Date.now())
+      }))
+      
+      setMessages(loadedMessages)
+      setConversationId(convId)
+      setShowSidebar(false)
+      setActionLogs([])
+    } catch (error) {
+      console.error('Failed to load conversation:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const deleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    if (!confirm('Delete this conversation?')) return
+    
+    try {
+      await axios.delete(`${API_URL}/api/agent/conversations/${convId}`)
+      
+      // Reload conversations list
+      await loadConversations()
+      
+      // If deleted current conversation, start new chat
+      if (convId === conversationId) {
+        createNewChat()
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+    }
+  }
 
   const addActionLog = (tool: string, action: string, status: ActionLog['status'], output?: string) => {
     const log: ActionLog = {
@@ -329,6 +405,95 @@ export default function AgentChatManus() {
 
   return (
     <div className="flex h-screen bg-[#0A0A0A] text-white relative">
+      {/* SIDEBAR - Conversation History */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-zinc-900 border-r border-zinc-800 transform transition-transform duration-300 ${
+          showSidebar ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+          <h2 className="text-sm font-semibold text-white">Chat History</h2>
+          <button
+            onClick={() => setShowSidebar(false)}
+            className="p-1 hover:bg-zinc-800 rounded"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* New Chat Button */}
+        <div className="p-4 border-b border-zinc-800">
+          <button
+            onClick={createNewChat}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            <PlusIcon className="w-4 h-4" />
+            <span>New Chat</span>
+          </button>
+        </div>
+
+        {/* Conversations List */}
+        <div className="flex-1 overflow-y-auto p-2">
+          {loadingConversations ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="text-center py-8 text-zinc-500 text-sm">
+              No conversations yet
+            </div>
+          ) : (
+            conversations.map((conv) => (
+              <button
+                key={conv.conversation_id}
+                onClick={() => loadConversation(conv.conversation_id)}
+                className={`w-full text-left p-3 rounded-lg mb-2 hover:bg-zinc-800 transition-colors group ${
+                  conv.conversation_id === conversationId ? 'bg-zinc-800 ring-1 ring-blue-600' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ChatBubbleLeftIcon className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                      <p className="text-sm font-medium text-white truncate">
+                        {conv.title}
+                      </p>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      {conv.message_count} messages • {new Date(conv.last_updated).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => deleteConversation(conv.conversation_id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-opacity"
+                  >
+                    <TrashIcon className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-zinc-800">
+          <div className="text-xs text-zinc-500 text-center">
+            {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay */}
+      {showSidebar && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
       {/* LEFT PANEL - Chat Interface */}
       <div 
         className={`flex flex-col border-r border-zinc-800 ${!isResizing ? 'transition-all duration-300' : ''}`}
@@ -337,9 +502,18 @@ export default function AgentChatManus() {
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-zinc-800 bg-black/40 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-white">ATLAS Agent</h1>
-              <p className="text-xs text-zinc-400">Autonomous DevOps Assistant</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                title="Chat History"
+              >
+                <Bars3Icon className="w-5 h-5 text-zinc-400" />
+              </button>
+              <div>
+                <h1 className="text-lg font-semibold text-white">ATLAS Agent</h1>
+                <p className="text-xs text-zinc-400">Autonomous DevOps Assistant</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
