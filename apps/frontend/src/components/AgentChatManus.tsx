@@ -331,7 +331,7 @@ export default function AgentChatManus() {
     <div className="flex h-screen bg-[#0A0A0A] text-white relative">
       {/* LEFT PANEL - Chat Interface */}
       <div 
-        className="flex flex-col border-r border-zinc-800 transition-all duration-300"
+        className={`flex flex-col border-r border-zinc-800 ${!isResizing ? 'transition-all duration-300' : ''}`}
         style={{ width: showActionsPanel ? `${100 - panelWidth}%` : '100%' }}
       >
         {/* Header */}
@@ -608,7 +608,7 @@ export default function AgentChatManus() {
 
       {/* RIGHT PANEL - Live Action Viewer (Collapsible) */}
       <div 
-        className={`flex flex-col bg-zinc-950 transition-all duration-300 ${
+        className={`flex flex-col bg-zinc-950 ${!isResizing ? 'transition-all duration-300' : ''} ${
           showActionsPanel ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
         }`}
         style={{ width: showActionsPanel ? `${panelWidth}%` : '0%' }}
