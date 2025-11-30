@@ -183,7 +183,7 @@ export default function AgentChatManus() {
           newMessages[newMessages.length - 1].content = currentText
           return newMessages
         })
-        await new Promise(resolve => setTimeout(resolve, 10)) // 10ms per character
+        await new Promise(resolve => setTimeout(resolve, 5)) // 5ms per character (faster)
       }
       
       setIsStreaming(false)
