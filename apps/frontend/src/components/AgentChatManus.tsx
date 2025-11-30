@@ -70,6 +70,7 @@ export default function AgentChatManus() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const actionsEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -79,6 +80,14 @@ export default function AgentChatManus() {
   useEffect(() => {
     scrollToBottom()
   }, [messages, actionLogs])
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
+    }
+  }, [input])
 
   const addActionLog = (tool: string, action: string, status: ActionLog['status'], output?: string) => {
     const log: ActionLog = {
@@ -439,13 +448,21 @@ export default function AgentChatManus() {
         {/* Input */}
         <form onSubmit={sendMessage} className="flex-shrink-0 p-4 border-t border-zinc-800 bg-black/40">
           <div className="flex gap-2">
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Describe your task..."
-              className="flex-1 px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm placeholder:text-zinc-500"
+              onKeyDown={(e) => {
+                // Shift+Enter = new line, Enter = submit
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage(e)
+                }
+              }}
+              placeholder="Describe your task... (Shift+Enter for new line)"
+              className="flex-1 px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm placeholder:text-zinc-500 resize-none min-h-[48px] max-h-[200px] overflow-y-auto"
               disabled={loading}
+              rows={1}
             />
             <button
               type="submit"
