@@ -42,12 +42,29 @@ User: *Gets results immediately*
 
 ---
 
-## 🌟 Key Features
+## 🎯 Core Features
 
-### 🤖 Agentic Execution Engine
-- **20+ DevOps Tools** - Kubernetes, Docker, Git, Monitoring operations
-- **Function Calling** - Claude 4.5 Sonnet with tool use
-- **Approval Workflow** - Safe operations auto-execute, dangerous ones require approval
+### 🤖 **Agentic Execution Engine**
+- **26 Tools** - Real DevOps operations execution, not just suggestions
+- **Self-Healing** - Automatically restart failed pods and scale deployments
+- **Predictive Operations** - Prevent issues before they occur with trend analysis
+- **Security Auto-Remediation** - Scan and fix security issues automatically
+
+### 🔒 **Advanced Safety & Flexibility**
+- **3 Approval Modes** - STRICT/NORMAL/AUTO for different security needs
+- **Tool Validation Layer** - Automatic result validation after each operation
+- **Comprehensive Audit Trail** - Track all executed operations with full context
+
+### 🧠 **Intelligence & Transparency**
+- **Explicit Reasoning** - See agent's thinking process with `<think>` and `<plan>` tags
+- **Multi-Step Planning** - Systematic approach to complex tasks
+- **Resource Efficiency Analysis** - Identify over/under-provisioned resources
+
+### 🛠️ **Multi-Tool Support**
+- **Kubernetes** - Full cluster management (13 tools)
+- **Predictive Analytics** - Resource exhaustion prediction, pattern detection (4 tools)
+- **Security** - Vulnerability scanning and automated fixes (2 tools)
+- **Docker, Git, Prometheus** - Complete DevOps toolkit
 - **Audit Logging** - Every execution logged with timestamps, user, status
 - **Tool Chaining** - Multi-step operations executed automatically
 
