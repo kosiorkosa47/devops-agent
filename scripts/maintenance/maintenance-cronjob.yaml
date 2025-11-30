@@ -1,0 +1,87 @@
+---
+# Maintenance CronJob - Weekly cleanup tasks
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maintenance-scripts
+  namespace: default
+data:
+  cleanup.sh: |
+    #!/bin/bash
+    # Main cleanup script loaded from external file
+    # This will execute the cleanup.sh from scripts/maintenance/
+    set -e
+    echo "Weekly maintenance job started at $(date)"
+    
+    # Add maintenance tasks here
+    echo "Maintenance completed"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: weekly-maintenance
+  namespace: default
+spec:
+  schedule: "0 3 * * 0"  # Every Sunday at 3 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: maintenance-sa
+          containers:
+          - name: maintenance
+            image: bitnami/kubectl:latest
+            command: ["/bin/bash", "/scripts/cleanup.sh"]
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          volumes:
+          - name: scripts
+            configMap:
+              name: maintenance-scripts
+              defaultMode: 0755
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: maintenance-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: maintenance-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["list", "get"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: maintenance-binding
+subjects:
+- kind: ServiceAccount
+  name: maintenance-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: maintenance-role
+  apiGroup: rbac.authorization.k8s.io

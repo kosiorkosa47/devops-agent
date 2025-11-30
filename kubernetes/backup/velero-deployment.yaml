@@ -1,0 +1,33 @@
+---
+# Velero - Kubernetes Backup & Disaster Recovery
+# Backs up to MinIO S3 storage
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: velero
+  namespace: velero
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: velero
+subjects:
+- kind: ServiceAccount
+  name: velero
+  namespace: velero
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Velero will be installed via Helm, this is the values file
+# helm install velero vmware-tanzu/velero \
+#   --namespace velero \
+#   --create-namespace \
+#   -f velero-values.yaml

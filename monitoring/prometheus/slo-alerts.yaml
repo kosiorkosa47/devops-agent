@@ -1,0 +1,160 @@
+---
+# SLO/SLI Monitoring and Alerting
+# Target: 99.9% availability (43.2 minutes downtime/month)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-slo-rules
+  namespace: monitoring
+data:
+  slo-rules.yaml: |
+    groups:
+    - name: slo_rules
+      interval: 30s
+      rules:
+      
+      # === Availability SLI ===
+      # Tracks successful requests vs total requests
+      - record: sli:availability:ratio_rate5m
+        expr: |
+          sum(rate(http_requests_total{status!~"5.."}[5m])) by (service)
+          /
+          sum(rate(http_requests_total[5m])) by (service)
+      
+      - record: sli:availability:ratio_rate30m
+        expr: |
+          sum(rate(http_requests_total{status!~"5.."}[30m])) by (service)
+          /
+          sum(rate(http_requests_total[30m])) by (service)
+      
+      # === Latency SLI ===
+      # P95 latency should be < 500ms
+      - record: sli:latency:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+          )
+      
+      - record: sli:latency:p99_5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+          )
+      
+      # === Error Budget ===
+      # 99.9% = 0.1% error budget per 30 days
+      - record: slo:error_budget:remaining_ratio
+        expr: |
+          1 - (
+            (1 - sli:availability:ratio_rate30m)
+            /
+            (1 - 0.999)
+          )
+      
+      # Error budget burn rate (how fast we're consuming error budget)
+      - record: slo:error_budget:burn_rate_1h
+        expr: |
+          (1 - sli:availability:ratio_rate5m)
+          /
+          (1 - 0.999)
+      
+    - name: slo_alerts
+      interval: 30s
+      rules:
+      
+      # === Fast Burn Alert ===
+      # Alert if we're burning through error budget too quickly
+      - alert: SLOFastBurn
+        expr: |
+          slo:error_budget:burn_rate_1h > 14.4
+          and
+          slo:error_budget:remaining_ratio > 0
+        for: 2m
+        labels:
+          severity: critical
+          slo: "true"
+        annotations:
+          summary: "Fast SLO burn rate for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} is burning error budget at {{ $value | humanize }}x the acceptable rate.
+            At this rate, we'll exhaust our monthly error budget in < 2 days.
+            Current availability: {{ with query "sli:availability:ratio_rate5m{service=\"{{ $labels.service }}\"}" }}{{ . | first | value | humanizePercentage }}{{ end }}
+      
+      # === Slow Burn Alert ===
+      - alert: SLOSlowBurn
+        expr: |
+          slo:error_budget:burn_rate_1h > 1.0
+          and
+          slo:error_budget:burn_rate_1h <= 14.4
+          and
+          slo:error_budget:remaining_ratio > 0
+        for: 15m
+        labels:
+          severity: warning
+          slo: "true"
+        annotations:
+          summary: "Slow SLO burn for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} is consuming error budget faster than target.
+            Burn rate: {{ $value | humanize }}x
+            Remaining budget: {{ with query "slo:error_budget:remaining_ratio{service=\"{{ $labels.service }}\"}" }}{{ . | first | value | humanizePercentage }}{{ end }}
+      
+      # === Availability SLO Violation ===
+      - alert: AvailabilitySLOViolation
+        expr: |
+          sli:availability:ratio_rate30m < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          slo: "true"
+        annotations:
+          summary: "Availability SLO violated for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} availability is {{ $value | humanizePercentage }}, below 99.9% SLO.
+            This violates our availability target!
+      
+      # === Latency SLO Violation ===
+      - alert: LatencySLOViolation
+        expr: |
+          sli:latency:p95_5m > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          slo: "true"
+        annotations:
+          summary: "P95 latency SLO violated for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} P95 latency is {{ $value | humanizeDuration }}, above 500ms SLO.
+            P99 latency: {{ with query "sli:latency:p99_5m{service=\"{{ $labels.service }}\"}" }}{{ . | first | value | humanizeDuration }}{{ end }}
+      
+      # === Error Budget Exhausted ===
+      - alert: ErrorBudgetExhausted
+        expr: |
+          slo:error_budget:remaining_ratio <= 0
+        for: 1m
+        labels:
+          severity: critical
+          slo: "true"
+        annotations:
+          summary: "Error budget exhausted for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} has exhausted its error budget for this period.
+            All non-critical changes should be frozen until availability improves.
+            Current availability: {{ with query "sli:availability:ratio_rate30m{service=\"{{ $labels.service }}\"}" }}{{ . | first | value | humanizePercentage }}{{ end }}
+      
+      # === Near Error Budget Exhaustion ===
+      - alert: ErrorBudgetNearExhaustion
+        expr: |
+          slo:error_budget:remaining_ratio < 0.1
+          and
+          slo:error_budget:remaining_ratio > 0
+        for: 5m
+        labels:
+          severity: warning
+          slo: "true"
+        annotations:
+          summary: "Error budget nearly exhausted for {{ $labels.service }}"
+          description: |
+            Service {{ $labels.service }} has {{ $value | humanizePercentage }} error budget remaining.
+            Consider reducing deployment frequency and focusing on reliability.

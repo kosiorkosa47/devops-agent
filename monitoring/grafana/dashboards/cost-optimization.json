@@ -1,0 +1,202 @@
+{
+  "dashboard": {
+    "title": "Cost Optimization Dashboard",
+    "tags": ["cost", "optimization", "resources"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Total CPU Requests vs Limits vs Usage",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(kube_pod_container_resource_requests{resource='cpu'})",
+            "legendFormat": "CPU Requests"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_limits{resource='cpu'})",
+            "legendFormat": "CPU Limits"
+          },
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{container!=''}[5m]))",
+            "legendFormat": "CPU Usage"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Total Memory Requests vs Limits vs Usage",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(kube_pod_container_resource_requests{resource='memory'})",
+            "legendFormat": "Memory Requests"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_limits{resource='memory'})",
+            "legendFormat": "Memory Limits"
+          },
+          {
+            "expr": "sum(container_memory_usage_bytes{container!=''})",
+            "legendFormat": "Memory Usage"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Resource Utilization by Namespace",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{container!=''}[5m])) by (namespace) / sum(kube_pod_container_resource_requests{resource='cpu'}) by (namespace) * 100",
+            "format": "table",
+            "legendFormat": "CPU Utilization %"
+          },
+          {
+            "expr": "sum(container_memory_usage_bytes{container!=''}) by (namespace) / sum(kube_pod_container_resource_requests{resource='memory'}) by (namespace) * 100",
+            "format": "table",
+            "legendFormat": "Memory Utilization %"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Over-Provisioned Pods (CPU < 50% for 24h)",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "avg_over_time((rate(container_cpu_usage_seconds_total{container!=''}[5m]) / on(pod,namespace) kube_pod_container_resource_requests{resource='cpu'})[24h:]) < 0.5",
+            "format": "table",
+            "legendFormat": "{{ namespace }}/{{ pod }}"
+          }
+        ],
+        "description": "Pods consistently using less than 50% of requested CPU"
+      },
+      {
+        "id": 5,
+        "title": "Under-Provisioned Pods (CPU > 90% for 1h)",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "avg_over_time((rate(container_cpu_usage_seconds_total{container!=''}[5m]) / on(pod,namespace) kube_pod_container_resource_requests{resource='cpu'})[1h:]) > 0.9",
+            "format": "table",
+            "legendFormat": "{{ namespace }}/{{ pod }}"
+          }
+        ],
+        "description": "Pods consistently using more than 90% of requested CPU"
+      },
+      {
+        "id": 6,
+        "title": "Idle Resources (Zero usage)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 24, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "count(rate(container_cpu_usage_seconds_total{container!=''}[5m]) == 0)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Estimated Monthly Waste ($)",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 24, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "(sum(kube_pod_container_resource_requests{resource='cpu'}) - sum(rate(container_cpu_usage_seconds_total{container!=''}[5m]))) * 30 * 0.04"
+          }
+        ],
+        "description": "Estimated cost of unused CPU resources (@$0.04/CPU-hour)"
+      },
+      {
+        "id": 8,
+        "title": "Claude API Usage (requests/min)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(claude_api_requests_total[5m]) * 60",
+            "legendFormat": "Requests/min"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Claude API Tokens Used",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(claude_api_input_tokens_total[5m]) * 60",
+            "legendFormat": "Input tokens/min"
+          },
+          {
+            "expr": "rate(claude_api_output_tokens_total[5m]) * 60",
+            "legendFormat": "Output tokens/min"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Estimated Claude API Cost ($/day)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 32, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "(increase(claude_api_input_tokens_total[24h]) * 0.003 / 1000) + (increase(claude_api_output_tokens_total[24h]) * 0.015 / 1000)"
+          }
+        ],
+        "description": "Based on Claude 3.5 Sonnet pricing"
+      },
+      {
+        "id": 11,
+        "title": "Right-Sizing Recommendations",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 40, "w": 24, "h": 10},
+        "targets": [
+          {
+            "expr": "avg_over_time(rate(container_cpu_usage_seconds_total{container!=''}[5m])[24h:]) * 1.2",
+            "format": "table",
+            "legendFormat": "Recommended CPU Request"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "pod": "Pod",
+                "namespace": "Namespace",
+                "Value": "Recommended CPU (20% buffer)"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    }
+  }
+}

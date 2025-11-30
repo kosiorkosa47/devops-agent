@@ -1,0 +1,112 @@
+---
+# PostgreSQL Automated Backup CronJob
+# Backs up to MinIO every 6 hours
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-backup-script
+  namespace: data
+data:
+  backup.sh: |
+    #!/bin/bash
+    set -e
+    
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_FILE="postgresql_backup_${TIMESTAMP}.sql.gz"
+    
+    echo "Starting PostgreSQL backup at $(date)"
+    
+    # Dump database
+    pg_dump -h postgresql.data.svc.cluster.local \
+            -U ${POSTGRES_USER} \
+            -d ${POSTGRES_DB} \
+            | gzip > /tmp/${BACKUP_FILE}
+    
+    echo "Backup created: ${BACKUP_FILE}"
+    
+    # Upload to MinIO
+    mc alias set minio ${MINIO_URL} ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY}
+    mc cp /tmp/${BACKUP_FILE} minio/backups/postgresql/
+    
+    echo "Backup uploaded to MinIO"
+    
+    # Cleanup old backups (keep last 30 days)
+    mc rm --recursive --force --older-than 30d minio/backups/postgresql/
+    
+    echo "PostgreSQL backup completed successfully at $(date)"
+    
+    # Verify backup
+    BACKUP_SIZE=$(stat -f%z /tmp/${BACKUP_FILE} 2>/dev/null || stat -c%s /tmp/${BACKUP_FILE})
+    if [ $BACKUP_SIZE -lt 1000 ]; then
+      echo "ERROR: Backup file too small, might be corrupted!"
+      exit 1
+    fi
+    
+    echo "Backup verified, size: ${BACKUP_SIZE} bytes"
+    
+    # Cleanup local file
+    rm /tmp/${BACKUP_FILE}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgresql-backup
+  namespace: data
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: postgres:16-alpine
+            command: ["/bin/sh", "/scripts/backup.sh"]
+            env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRES_DB
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRES_PASSWORD
+            - name: MINIO_URL
+              value: "http://minio.storage.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_PASSWORD
+            volumeMounts:
+            - name: backup-script
+              mountPath: /scripts
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+          volumes:
+          - name: backup-script
+            configMap:
+              name: postgresql-backup-script
+              defaultMode: 0755
