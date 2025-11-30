@@ -12,6 +12,7 @@ from app.core.tools import ToolDefinitions
 from app.core.executors.kubernetes import KubernetesExecutor
 from app.core.redis import get_redis_client
 from app.core.predictive_engine import predictive_engine
+from app.core.security_engine import security_engine
 
 logger = logging.getLogger(__name__)
 
@@ -331,6 +332,15 @@ class ExecutionEngine:
                 return method(**parameters)
             else:
                 raise ValueError(f"Predictive method not found: {method_name}")
+        
+        # Security tools
+        elif tool_name.startswith("scan_") or tool_name == "auto_fix_security_issue":
+            method_name = tool_name
+            method = getattr(security_engine, method_name, None)
+            if method:
+                return method(**parameters)
+            else:
+                raise ValueError(f"Security method not found: {method_name}")
         
         else:
             raise ValueError(f"Unknown tool: {tool_name}")

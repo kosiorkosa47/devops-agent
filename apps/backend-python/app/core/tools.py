@@ -369,6 +369,40 @@ class ToolDefinitions:
         ]
     
     @staticmethod
+    def get_security_tools() -> List[Dict[str, Any]]:
+        """Security auto-remediation tools"""
+        return [
+            {
+                "name": "scan_pod_security",
+                "description": "🔒 SECURITY: Scan pod for security issues (root user, missing limits, privileged mode, etc.)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"},
+                        "pod_name": {"type": "string"}
+                    },
+                    "required": ["namespace", "pod_name"]
+                }
+            },
+            {
+                "name": "auto_fix_security_issue",
+                "description": "🔒 SECURITY AUTO-FIX: Automatically fix a specific security issue in a pod (dangerous - requires approval)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {"type": "string"},
+                        "pod_name": {"type": "string"},
+                        "issue_type": {
+                            "type": "string",
+                            "description": "Type of issue to fix (e.g., 'running_as_root', 'missing_resource_limits')"
+                        }
+                    },
+                    "required": ["namespace", "pod_name", "issue_type"]
+                }
+            }
+        ]
+    
+    @staticmethod
     def get_all_tools() -> List[Dict[str, Any]]:
         """Get all available tools"""
         return (
@@ -376,7 +410,8 @@ class ToolDefinitions:
             ToolDefinitions.get_docker_tools() +
             ToolDefinitions.get_git_tools() +
             ToolDefinitions.get_monitoring_tools() +
-            ToolDefinitions.get_predictive_tools()
+            ToolDefinitions.get_predictive_tools() +
+            ToolDefinitions.get_security_tools()
         )
     
     @staticmethod
