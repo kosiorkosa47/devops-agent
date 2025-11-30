@@ -133,6 +133,69 @@ export default function AgentChatManus() {
     }
   }, [isResizing])
 
+  const formatToolAction = (toolName: string, params: any): string => {
+    // Format tool actions to show readable commands
+    try {
+      switch (toolName) {
+        case 'kubectl_get_pods':
+          return `kubectl get pods ${params.namespace ? `-n ${params.namespace}` : '--all-namespaces'} ${params.label_selector ? `-l ${params.label_selector}` : ''}`
+        
+        case 'kubectl_get_pod_logs':
+          return `kubectl logs ${params.pod_name} -n ${params.namespace} ${params.tail_lines ? `--tail=${params.tail_lines}` : ''}`
+        
+        case 'kubectl_describe_pod':
+          return `kubectl describe pod ${params.pod_name} -n ${params.namespace}`
+        
+        case 'kubectl_get_deployments':
+          return `kubectl get deployments ${params.namespace ? `-n ${params.namespace}` : '--all-namespaces'}`
+        
+        case 'kubectl_scale_deployment':
+          return `kubectl scale deployment ${params.deployment_name} --replicas=${params.replicas} -n ${params.namespace}`
+        
+        case 'docker_list_containers':
+          return `docker ps ${params.all ? '-a' : ''}`
+        
+        case 'docker_logs':
+          return `docker logs ${params.container_id} ${params.tail ? `--tail ${params.tail}` : ''}`
+        
+        case 'docker_inspect':
+          return `docker inspect ${params.container_id}`
+        
+        case 'execute_powershell_command':
+          return `PowerShell: ${params.command}`
+        
+        case 'execute_cmd_command':
+          return `CMD: ${params.command}`
+        
+        case 'install_minikube':
+          return 'Installing Minikube...'
+        
+        case 'install_kubectl':
+          return 'Installing kubectl...'
+        
+        case 'start_minikube':
+          return `minikube start ${params.driver ? `--driver=${params.driver}` : ''}`
+        
+        case 'stop_minikube':
+          return 'minikube stop'
+        
+        case 'get_cluster_status':
+          return 'Checking cluster status...'
+        
+        case 'check_tool_installed':
+          return `Checking if ${params.tool_name} is installed`
+        
+        default:
+          // For unknown tools, show params in a readable way
+          return Object.entries(params)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(', ') || 'No parameters'
+      }
+    } catch (error) {
+      return JSON.stringify(params)
+    }
+  }
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -162,7 +225,8 @@ export default function AgentChatManus() {
       // Add action logs for tools used
       if (response.data.tool_uses) {
         response.data.tool_uses.forEach((tool: any) => {
-          addActionLog(tool.name, JSON.stringify(tool.input), 'success')
+          const action = formatToolAction(tool.name, tool.input)
+          addActionLog(tool.name, action, 'success')
         })
       }
 
