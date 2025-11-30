@@ -121,3 +121,34 @@ devops-agent-windsurf-prompt.md
 notes.md
 TODO.md
 NOTES.md
+
+# Test results and local testing
+test-results/
+test-output/
+test-logs/
+*.test.log
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Local development
+*.local.md
+local-*.md
+scratch/
+experiments/
+sandbox/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dumps
+dump.rdb
+
+# Personal credentials and configs
+config.local.yml
+config.local.yaml
+*.local.env
