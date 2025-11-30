@@ -152,36 +152,39 @@ export default function AgentChat() {
   }
 
   return (
-    <div className="w-full max-w-[1618px] h-[calc(100vh-120px)] bg-white/95 backdrop-blur-xl rounded-lg shadow-sm border border-gray-200/80 flex flex-col overflow-hidden transition-all duration-300 hover:shadow-md">
+    <div className="w-full max-w-[1400px] h-[calc(100vh-100px)] bg-white rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.08)] border border-zinc-200/60 flex flex-col overflow-hidden">
       {/* Chat Header */}
-      <div className="px-8 py-5 border-b border-gray-200/60">
+      <div className="px-6 py-4 border-b border-zinc-100">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-[34px] h-[34px] rounded-md bg-gray-900 flex items-center justify-center">
-              <WrenchScrewdriverIcon className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-zinc-900 to-zinc-700 flex items-center justify-center shadow-sm">
+                <WrenchScrewdriverIcon className="w-5 h-5 text-white" />
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
             </div>
             <div>
-              <h2 className="text-[21px] font-semibold text-gray-900 tracking-tight">ATLAS</h2>
-              <p className="text-[13px] text-gray-500">DevOps Agent</p>
+              <h2 className="text-base font-semibold text-zinc-900 tracking-tight">ATLAS</h2>
+              <p className="text-xs text-zinc-500 font-medium">Agentic DevOps</p>
             </div>
           </div>
           <button
             onClick={clearConversation}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 rounded-lg transition-all duration-200"
             title="Clear conversation"
           >
-            <TrashIcon className="w-5 h-5" />
+            <TrashIcon className="w-4 h-4" />
           </button>
         </div>
         
-        {/* Configuration Row - Golden Ratio spacing */}
-        <div className="mt-5 flex items-center gap-3 flex-wrap">
+        {/* Configuration Row */}
+        <div className="mt-4 flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <label className="text-[13px] font-medium text-gray-700">Model</label>
+            <label className="text-xs font-medium text-zinc-500">Model</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-3 py-1.5 text-[13px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent bg-white hover:border-zinc-300 transition-all shadow-sm"
             >
               {CLAUDE_MODELS.map((model) => (
                 <option key={model.value} value={model.value}>
@@ -192,11 +195,11 @@ export default function AgentChat() {
           </div>
           
           <div className="flex items-center gap-2">
-            <label className="text-[13px] font-medium text-gray-700">Approval</label>
+            <label className="text-xs font-medium text-zinc-500">Approval</label>
             <select
               value={approvalMode}
               onChange={(e) => setApprovalMode(e.target.value)}
-              className="px-3 py-1.5 text-[13px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent bg-white hover:border-zinc-300 transition-all shadow-sm"
             >
               {APPROVAL_MODES.map((mode) => (
                 <option key={mode.value} value={mode.value}>
@@ -206,54 +209,60 @@ export default function AgentChat() {
             </select>
           </div>
           
-          <label className="flex items-center gap-2 text-[13px] text-gray-700 cursor-pointer hover:text-gray-900 transition-colors">
+          <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 cursor-pointer hover:text-zinc-900 transition-colors">
             <input
               type="checkbox"
               checked={autoApproveSafe}
               onChange={(e) => setAutoApproveSafe(e.target.checked)}
-              className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 cursor-pointer"
+              className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 focus:ring-offset-0 cursor-pointer w-4 h-4"
             />
-            <span>Auto-approve safe</span>
+            <span>Auto-approve</span>
           </label>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-8 space-y-4 bg-gradient-to-b from-zinc-50/50 to-white">
         {messages.length === 0 && (
           <div className="h-full flex items-center justify-center">
-            <div className="text-center space-y-3">
-              <div className="w-[55px] h-[55px] bg-gray-100 rounded-lg mx-auto flex items-center justify-center border border-gray-200">
-                <WrenchScrewdriverIcon className="w-6 h-6 text-gray-700" />
+            <div className="text-center space-y-6 max-w-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-zinc-900 to-zinc-700 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-zinc-900/10">
+                <WrenchScrewdriverIcon className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-[21px] font-semibold text-gray-900">Ready to execute</h3>
-              <p className="text-[13px] text-gray-600 max-w-md leading-relaxed">
-                Agent mode active. Send a message to begin.
-              </p>
-              <div className="pt-4 grid grid-cols-2 gap-3 max-w-2xl">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-semibold text-zinc-900 tracking-tight">Ready to assist</h3>
+                <p className="text-sm text-zinc-500 leading-relaxed">
+                  Start a conversation to execute DevOps operations
+                </p>
+              </div>
+              <div className="pt-2 grid grid-cols-2 gap-2 max-w-md mx-auto">
                 <button
                   onClick={() => setInput("List all pods in production namespace")}
-                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
+                  className="group text-left px-4 py-3.5 bg-white hover:bg-zinc-50 rounded-xl text-xs font-medium text-zinc-700 hover:text-zinc-900 transition-all border border-zinc-200 hover:border-zinc-300 hover:shadow-sm"
                 >
-                  List all pods
+                  <span className="block text-zinc-900 font-semibold mb-0.5">List pods</span>
+                  <span className="text-[11px] text-zinc-500">View all running pods</span>
                 </button>
                 <button
                   onClick={() => setInput("Check logs for backend-python pod")}
-                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
+                  className="group text-left px-4 py-3.5 bg-white hover:bg-zinc-50 rounded-xl text-xs font-medium text-zinc-700 hover:text-zinc-900 transition-all border border-zinc-200 hover:border-zinc-300 hover:shadow-sm"
                 >
-                  Check logs
+                  <span className="block text-zinc-900 font-semibold mb-0.5">Check logs</span>
+                  <span className="text-[11px] text-zinc-500">View pod logs</span>
                 </button>
                 <button
                   onClick={() => setInput("Show me pod crashes in the last hour")}
-                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
+                  className="group text-left px-4 py-3.5 bg-white hover:bg-zinc-50 rounded-xl text-xs font-medium text-zinc-700 hover:text-zinc-900 transition-all border border-zinc-200 hover:border-zinc-300 hover:shadow-sm"
                 >
-                  Check crashes
+                  <span className="block text-zinc-900 font-semibold mb-0.5">Check crashes</span>
+                  <span className="text-[11px] text-zinc-500">Find issues</span>
                 </button>
                 <button
                   onClick={() => setInput("Get deployment status in staging")}
-                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
+                  className="group text-left px-4 py-3.5 bg-white hover:bg-zinc-50 rounded-xl text-xs font-medium text-zinc-700 hover:text-zinc-900 transition-all border border-zinc-200 hover:border-zinc-300 hover:shadow-sm"
                 >
-                  Get status
+                  <span className="block text-zinc-900 font-semibold mb-0.5">Get status</span>
+                  <span className="text-[11px] text-zinc-500">Deployment info</span>
                 </button>
               </div>
             </div>
@@ -378,27 +387,26 @@ export default function AgentChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <form onSubmit={sendMessage} className="p-4 border-t border-gray-200">
-        <div className="flex space-x-3">
+      {/* Input Form */}
+      <form onSubmit={handleSubmit} className="p-6 border-t border-zinc-100 bg-white">
+        <div className="flex gap-3">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask ATLAS to execute operations for you..."
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Send a message to ATLAS..."
+            className="flex-1 px-4 py-3 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent bg-white text-sm placeholder:text-zinc-400 shadow-sm transition-all"
             disabled={loading}
           />
           <button
             type="submit"
             disabled={!input.trim() || loading}
-            className="px-5 py-2.5 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-[13px] font-medium"
+            className="px-6 py-3 bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-sm hover:shadow"
           >
-            <span>Send</span>
+            <span>{loading ? 'Sending...' : 'Send'}</span>
             <PaperAirplaneIcon className="w-4 h-4" />
           </button>
         </div>
       </form>
     </div>
-  )
 }
