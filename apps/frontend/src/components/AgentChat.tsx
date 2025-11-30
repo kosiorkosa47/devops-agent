@@ -26,15 +26,16 @@ interface Message {
 }
 
 const CLAUDE_MODELS = [
-  { value: 'claude-sonnet-4-5-20250929', label: 'Claude 4.5 Sonnet', badge: 'Latest' },
-  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', badge: 'Recommended' },
-  { value: 'claude-3-5-sonnet-20240620', label: 'Claude 3.5 Sonnet (June)' },
-  { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus', badge: 'Most Capable' },
-  { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
-  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku', badge: 'Fastest' },
-  { value: 'claude-2.1', label: 'Claude 2.1' },
-  { value: 'claude-2.0', label: 'Claude 2.0' },
-  { value: 'claude-instant-1.2', label: 'Claude Instant 1.2' },
+  // Claude 4.x Family (Latest - GA)
+  { value: 'claude-opus-4-1-20250805', label: 'Claude Opus 4.1', badge: 'Most Powerful' },
+  { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
+  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', badge: 'Recommended' },
+  
+  // Claude 3.x Family (Supported)
+  { value: 'claude-3-7-sonnet-20250219', label: 'Claude Sonnet 3.7' },
+  { value: 'claude-3-5-sonnet-20241022', label: 'Claude Sonnet 3.5 v2' },
+  { value: 'claude-3-5-haiku-20241022', label: 'Claude Haiku 3.5', badge: 'Fast' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude Haiku 3', badge: 'Fastest' },
 ]
 
 const APPROVAL_MODES = [
@@ -49,7 +50,7 @@ export default function AgentChat() {
   const [loading, setLoading] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [autoApproveSafe, setAutoApproveSafe] = useState(true)
-  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-5-20250929')
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
   const [approvalMode, setApprovalMode] = useState('normal')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -388,7 +389,7 @@ export default function AgentChat() {
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="p-6 border-t border-zinc-100 bg-white">
+      <form onSubmit={sendMessage} className="p-6 border-t border-zinc-100 bg-white">
         <div className="flex gap-3">
           <input
             type="text"
