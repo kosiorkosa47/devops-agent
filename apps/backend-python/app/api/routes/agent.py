@@ -22,6 +22,7 @@ class AgentRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
     conversation_id: Optional[str] = None
     auto_approve_safe: bool = True  # Auto-approve safe operations
+    approval_mode: str = "normal"  # strict/normal/auto
 
 
 class ApprovalRequest(BaseModel):
@@ -74,7 +75,8 @@ async def agent_chat(
             conversation_history=conversation_history,
             user_id=user_id,
             conversation_id=conversation_id,
-            auto_approve_safe=request.auto_approve_safe
+            auto_approve_safe=request.auto_approve_safe,
+            approval_mode=request.approval_mode
         )
         
         # Update conversation history
