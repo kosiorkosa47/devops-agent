@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     ENABLE_METRICS: bool = True
     ENABLE_TRACING: bool = False
     
+    # Agent Execution
+    AGENT_REQUIRE_APPROVAL: bool = True  # Require approval for dangerous operations
+    AGENT_AUTO_APPROVE_SAFE: bool = True  # Auto-approve safe operations
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

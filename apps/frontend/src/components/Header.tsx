@@ -1,4 +1,9 @@
-export default function Header() {
+interface HeaderProps {
+  mode?: 'chat' | 'agent'
+  setMode?: (mode: 'chat' | 'agent') => void
+}
+
+export default function Header({ mode = 'agent', setMode }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -13,6 +18,30 @@ export default function Header() {
         </div>
         
         <div className="flex items-center space-x-4">
+          {setMode && (
+            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setMode('agent')}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  mode === 'agent'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                🔧 Agent Mode
+              </button>
+              <button
+                onClick={() => setMode('chat')}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  mode === 'chat'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                💬 Chat Only
+              </button>
+            </div>
+          )}
           <div className="flex items-center space-x-2 text-sm">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-gray-600">Online</span>

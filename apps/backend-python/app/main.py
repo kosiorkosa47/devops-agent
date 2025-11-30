@@ -67,6 +67,10 @@ app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 
+# Agent router (NEW - agentic execution)
+from app.api.routes import agent
+app.include_router(agent.router, prefix="/api/agent", tags=["Agent"])
+
 # Prometheus metrics endpoint
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
