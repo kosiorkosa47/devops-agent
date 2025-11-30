@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.11+-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Claude](https://img.shields.io/badge/Claude-3.5%20Sonnet-purple?logo=anthropic&logoColor=white)](https://www.anthropic.com/)
+[![Claude](https://img.shields.io/badge/Claude-4.5%20Sonnet-purple?logo=anthropic&logoColor=white)](https://www.anthropic.com/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
