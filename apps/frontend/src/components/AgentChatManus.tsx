@@ -65,6 +65,8 @@ export default function AgentChatManus() {
   const [showActionsPanel, setShowActionsPanel] = useState(false)
   const [panelWidth, setPanelWidth] = useState(50) // percentage
   const [isResizing, setIsResizing] = useState(false)
+  const [streamingText, setStreamingText] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const actionsEndRef = useRef<HTMLDivElement>(null)
@@ -155,16 +157,36 @@ export default function AgentChatManus() {
         })
       }
 
+      // Streaming effect
+      const fullText = response.data.response
+      setIsStreaming(true)
+      setStreamingText('')
+      
+      // Add empty message that will be updated
       const assistantMessage: Message = {
         role: 'assistant',
-        content: response.data.response,
+        content: '',
         timestamp: new Date(),
         toolUses: response.data.tool_uses,
         toolResults: response.data.tool_results,
         pendingExecution: response.data.execution
       }
-
       setMessages(prev => [...prev, assistantMessage])
+
+      // Stream text character by character
+      let currentText = ''
+      for (let i = 0; i < fullText.length; i++) {
+        currentText += fullText[i]
+        setStreamingText(currentText)
+        setMessages(prev => {
+          const newMessages = [...prev]
+          newMessages[newMessages.length - 1].content = currentText
+          return newMessages
+        })
+        await new Promise(resolve => setTimeout(resolve, 10)) // 10ms per character
+      }
+      
+      setIsStreaming(false)
       setConversationId(response.data.conversation_id)
       
       addActionLog('System', 'Task completed', 'success')
@@ -311,17 +333,26 @@ export default function AgentChatManus() {
           )}
 
           {messages.map((message, index) => (
-            <div key={index}>
-              <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+            <div key={index} className="group">
+              <div className={`flex gap-3 ${
+                message.role === 'user' ? 'justify-end' : 'justify-start'
+              }`}>
+                {/* Avatar */}
+                {message.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <CpuChipIcon className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                
+                <div className={`max-w-[75%] ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-blue-600 text-white rounded-2xl px-4 py-3'
                     : message.role === 'system'
-                    ? 'bg-amber-600/20 border border-amber-600/30 text-amber-200'
-                    : 'bg-zinc-800 text-zinc-100'
+                    ? 'bg-amber-900/20 border border-amber-600/30 text-amber-200 rounded-xl px-4 py-3'
+                    : 'text-zinc-100 py-1'
                 }`}>
                   {message.role === 'assistant' ? (
-                    <div className="prose prose-invert prose-sm max-w-none">
+                    <div className="prose prose-invert prose-sm max-w-none prose-headings:font-semibold prose-p:text-zinc-100 prose-p:leading-relaxed">
                       <ReactMarkdown
                         components={{
                           code({ node, inline, className, children, ...props }) {
@@ -331,12 +362,13 @@ export default function AgentChatManus() {
                                 style={vscDarkPlus}
                                 language={match[1]}
                                 PreTag="div"
+                                className="rounded-lg my-2"
                                 {...props}
                               >
                                 {String(children).replace(/\n$/, '')}
                               </SyntaxHighlighter>
                             ) : (
-                              <code className={className} {...props}>
+                              <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-blue-400" {...props}>
                                 {children}
                               </code>
                             )
@@ -345,13 +377,18 @@ export default function AgentChatManus() {
                       >
                         {message.content}
                       </ReactMarkdown>
+                      {isStreaming && index === messages.length - 1 && (
+                        <span className="inline-block w-1 h-4 bg-blue-500 ml-1 animate-pulse"></span>
+                      )}
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                   )}
-                  <div className="text-[10px] mt-2 opacity-60">
-                    {message.timestamp.toLocaleTimeString()}
-                  </div>
+                  {message.role === 'user' && (
+                    <div className="text-[10px] mt-2 opacity-60">
+                      {message.timestamp.toLocaleTimeString()}
+                    </div>
+                  )}
                 </div>
               </div>
 
