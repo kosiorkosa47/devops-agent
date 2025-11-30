@@ -94,7 +94,9 @@ class ClaudeAgent:
                         }
                     }
                 
-                # Process tool uses
+                # Process tool uses - collect all first
+                current_tool_results = []
+                
                 for block in response.content:
                     if block.type == "tool_use":
                         tool_name = block.name
@@ -137,19 +139,24 @@ class ClaudeAgent:
                                 "message": "Please approve this operation to continue."
                             }
                         
-                        # Add tool result to conversation for Claude
-                        messages.append({
-                            "role": "assistant",
-                            "content": response.content
+                        # Collect tool result for this tool_use
+                        current_tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": str(execution_result)
                         })
-                        messages.append({
-                            "role": "user",
-                            "content": [{
-                                "type": "tool_result",
-                                "tool_use_id": tool_use_id,
-                                "content": str(execution_result)
-                            }]
-                        })
+                
+                # Add assistant message with ALL tool_use blocks ONCE
+                if current_tool_results:
+                    messages.append({
+                        "role": "assistant",
+                        "content": response.content
+                    })
+                    # Add user message with ALL tool_results ONCE
+                    messages.append({
+                        "role": "user",
+                        "content": current_tool_results
+                    })
                 
                 # Continue loop to let Claude process tool results
                 
