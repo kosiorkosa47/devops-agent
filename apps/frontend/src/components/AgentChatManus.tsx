@@ -55,6 +55,9 @@ export default function AgentChatManus() {
   const [approvalMode, setApprovalMode] = useState('normal')
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([])
   const [isPaused, setIsPaused] = useState(false)
+  const [showActionsPanel, setShowActionsPanel] = useState(false)
+  const [panelWidth, setPanelWidth] = useState(50) // percentage
+  const [isResizing, setIsResizing] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const actionsEndRef = useRef<HTMLDivElement>(null)
@@ -78,7 +81,39 @@ export default function AgentChatManus() {
       output
     }
     setActionLogs(prev => [...prev, log])
+    // Auto-show panel when action is logged
+    if (!showActionsPanel) {
+      setShowActionsPanel(true)
+    }
   }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true)
+    e.preventDefault()
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing) return
+    const newWidth = (e.clientX / window.innerWidth) * 100
+    if (newWidth > 30 && newWidth < 70) {
+      setPanelWidth(100 - newWidth)
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsResizing(false)
+  }
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isResizing])
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -186,9 +221,12 @@ export default function AgentChatManus() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0A0A0A] text-white">
-      {/* LEFT PANEL - Chat Interface (50%) */}
-      <div className="w-1/2 flex flex-col border-r border-zinc-800">
+    <div className="flex h-screen bg-[#0A0A0A] text-white relative">
+      {/* LEFT PANEL - Chat Interface */}
+      <div 
+        className="flex flex-col border-r border-zinc-800 transition-all duration-300"
+        style={{ width: showActionsPanel ? `${100 - panelWidth}%` : '100%' }}
+      >
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-zinc-800 bg-black/40 backdrop-blur-sm">
           <div className="flex items-center justify-between">
@@ -233,6 +271,19 @@ export default function AgentChatManus() {
             >
               {isPaused ? <PlayIcon className="w-4 h-4" /> : <PauseIcon className="w-4 h-4" />}
             </button>
+
+            {actionLogs.length > 0 && (
+              <button
+                onClick={() => setShowActionsPanel(!showActionsPanel)}
+                className={`px-3 py-2 text-xs font-medium rounded-lg transition-all ${
+                  showActionsPanel 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300'
+                }`}
+              >
+                {showActionsPanel ? 'Hide' : 'Show'} Actions ({actionLogs.length})
+              </button>
+            )}
           </div>
         </div>
 
@@ -367,8 +418,23 @@ export default function AgentChatManus() {
         </form>
       </div>
 
-      {/* RIGHT PANEL - Live Action Viewer (50%) */}
-      <div className="w-1/2 flex flex-col bg-zinc-950">
+      {/* RESIZE HANDLE */}
+      {showActionsPanel && (
+        <div
+          className="w-1 bg-zinc-800 hover:bg-blue-600 cursor-col-resize transition-colors relative group"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-600/20" />
+        </div>
+      )}
+
+      {/* RIGHT PANEL - Live Action Viewer (Collapsible) */}
+      <div 
+        className={`flex flex-col bg-zinc-950 transition-all duration-300 ${
+          showActionsPanel ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
+        }`}
+        style={{ width: showActionsPanel ? `${panelWidth}%` : '0%' }}
+      >
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-zinc-800 bg-black/40 backdrop-blur-sm">
           <div className="flex items-center justify-between">
