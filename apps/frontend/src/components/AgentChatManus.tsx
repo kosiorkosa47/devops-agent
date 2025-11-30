@@ -116,12 +116,10 @@ export default function AgentChatManus() {
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizingRef.current) return
     
-    requestAnimationFrame(() => {
-      const newWidth = (e.clientX / window.innerWidth) * 100
-      if (newWidth > 30 && newWidth < 70) {
-        setPanelWidth(100 - newWidth)
-      }
-    })
+    const newWidth = (e.clientX / window.innerWidth) * 100
+    if (newWidth > 30 && newWidth < 70) {
+      setPanelWidth(100 - newWidth)
+    }
   }, [])
 
   const handleMouseUp = useCallback(() => {
