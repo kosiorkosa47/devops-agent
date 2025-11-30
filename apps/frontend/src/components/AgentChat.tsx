@@ -26,34 +26,21 @@ interface Message {
 }
 
 const CLAUDE_MODELS = [
-  // Claude 4.5 (Latest)
-  { value: 'claude-sonnet-4-5-20250929', label: '🚀 Claude 4.5 Sonnet', description: 'Latest & Greatest', badge: 'NEW' },
-  
-  // Claude 3.5 Family
-  { value: 'claude-3-5-sonnet-20241022', label: '⚡ Claude 3.5 Sonnet (Oct)', description: 'Fast & Intelligent', badge: 'HOT' },
-  { value: 'claude-3-5-sonnet-20240620', label: '⚡ Claude 3.5 Sonnet (June)', description: 'Stable Version' },
-  
-  // Claude 3 Opus (Most Powerful)
-  { value: 'claude-3-opus-20240229', label: '💎 Claude 3 Opus', description: 'Most Powerful', badge: 'PRO' },
-  
-  // Claude 3 Sonnet
-  { value: 'claude-3-sonnet-20240229', label: '🎯 Claude 3 Sonnet', description: 'Balanced Performance' },
-  
-  // Claude 3 Haiku (Fastest)
-  { value: 'claude-3-haiku-20240307', label: '⚡ Claude 3 Haiku', description: 'Lightning Fast', badge: 'FAST' },
-  
-  // Claude 2.1 (Legacy)
-  { value: 'claude-2.1', label: '📚 Claude 2.1', description: 'Legacy Model' },
-  { value: 'claude-2.0', label: '📚 Claude 2.0', description: 'Classic' },
-  
-  // Claude Instant (Ultra Fast)
-  { value: 'claude-instant-1.2', label: '🏃 Claude Instant 1.2', description: 'Ultra Fast', badge: 'SPEED' },
+  { value: 'claude-sonnet-4-5-20250929', label: 'Claude 4.5 Sonnet', badge: 'Latest' },
+  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', badge: 'Recommended' },
+  { value: 'claude-3-5-sonnet-20240620', label: 'Claude 3.5 Sonnet (June)' },
+  { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus', badge: 'Most Capable' },
+  { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku', badge: 'Fastest' },
+  { value: 'claude-2.1', label: 'Claude 2.1' },
+  { value: 'claude-2.0', label: 'Claude 2.0' },
+  { value: 'claude-instant-1.2', label: 'Claude Instant 1.2' },
 ]
 
 const APPROVAL_MODES = [
-  { value: 'normal', label: 'Normal', description: 'Approve dangerous ops only', icon: '🔒', color: 'primary' },
-  { value: 'strict', label: 'Strict', description: 'Approve every operation', icon: '🛡️', color: 'warning' },
-  { value: 'auto', label: 'Auto', description: 'Auto-approve everything', icon: '⚡', color: 'danger' },
+  { value: 'normal', label: 'Normal', description: 'Balanced security' },
+  { value: 'strict', label: 'Strict', description: 'Maximum control' },
+  { value: 'auto', label: 'Auto', description: 'Full automation' },
 ]
 
 export default function AgentChat() {
@@ -165,82 +152,69 @@ export default function AgentChat() {
   }
 
   return (
-    <div className="w-full max-w-6xl h-[calc(100vh-120px)] bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 rounded-2xl shadow-2xl border border-gray-200/50 backdrop-blur-sm flex flex-col overflow-hidden">
+    <div className="w-full max-w-[1618px] h-[calc(100vh-120px)] bg-white/95 backdrop-blur-xl rounded-lg shadow-sm border border-gray-200/80 flex flex-col overflow-hidden transition-all duration-300 hover:shadow-md">
       {/* Chat Header */}
-      <div className="px-6 py-4 border-b border-gray-200/50 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-pink-600/90 animate-gradient-x"></div>
-        <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center animate-pulse">
-                <WrenchScrewdriverIcon className="w-6 h-6 text-white drop-shadow-lg" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white drop-shadow-lg flex items-center gap-2">
-                  ATLAS Agentic Assistant
-                  <span className="text-2xl animate-bounce">🚀</span>
-                </h2>
-                <p className="text-xs text-white/90 drop-shadow">AI-Powered DevOps Automation</p>
-              </div>
-              <span className="px-3 py-1 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-lg animate-pulse">✨ LIVE</span>
+      <div className="px-8 py-5 border-b border-gray-200/60">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-[34px] h-[34px] rounded-md bg-gray-900 flex items-center justify-center">
+              <WrenchScrewdriverIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-[21px] font-semibold text-gray-900 tracking-tight">ATLAS</h2>
+              <p className="text-[13px] text-gray-500">DevOps Agent</p>
             </div>
           </div>
           <button
             onClick={clearConversation}
-            className="p-2.5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all hover:scale-110 backdrop-blur-sm"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
             title="Clear conversation"
           >
-            <TrashIcon className="w-5 h-5 drop-shadow" />
+            <TrashIcon className="w-5 h-5" />
           </button>
         </div>
         
-        {/* Configuration Row */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Model Selector */}
+        {/* Configuration Row - Golden Ratio spacing */}
+        <div className="mt-5 flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-white drop-shadow">🤖 Model:</label>
+            <label className="text-[13px] font-medium text-gray-700">Model</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-3 py-2 text-sm border-2 border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/90 backdrop-blur-md font-medium shadow-lg hover:bg-white transition-all"
+              className="px-3 py-1.5 text-[13px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-all"
             >
               {CLAUDE_MODELS.map((model) => (
                 <option key={model.value} value={model.value}>
-                  {model.label}
+                  {model.label} {model.badge ? `• ${model.badge}` : ''}
                 </option>
               ))}
             </select>
           </div>
           
-          {/* Approval Mode Selector */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-white drop-shadow">🛡️ Mode:</label>
+            <label className="text-[13px] font-medium text-gray-700">Approval</label>
             <select
               value={approvalMode}
               onChange={(e) => setApprovalMode(e.target.value)}
-              className="px-3 py-2 text-sm border-2 border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/90 backdrop-blur-md font-medium shadow-lg hover:bg-white transition-all"
+              className="px-3 py-1.5 text-[13px] border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-all"
             >
               {APPROVAL_MODES.map((mode) => (
                 <option key={mode.value} value={mode.value}>
-                  {mode.icon} {mode.label}
+                  {mode.label}
                 </option>
               ))}
             </select>
           </div>
           
-          {/* Auto-approve Toggle */}
-          <label className="flex items-center space-x-2 text-sm bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl hover:bg-white/20 transition-all cursor-pointer">
+          <label className="flex items-center gap-2 text-[13px] text-gray-700 cursor-pointer hover:text-gray-900 transition-colors">
             <input
               type="checkbox"
               checked={autoApproveSafe}
               onChange={(e) => setAutoApproveSafe(e.target.checked)}
-              className="rounded w-4 h-4 cursor-pointer"
+              className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 cursor-pointer"
             />
-            <span className="font-semibold text-white drop-shadow">✨ Auto-approve</span>
+            <span>Auto-approve safe</span>
           </label>
-        </div>
         </div>
       </div>
 
@@ -249,37 +223,37 @@ export default function AgentChat() {
         {messages.length === 0 && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-3">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl mx-auto flex items-center justify-center shadow-2xl animate-pulse">
-                <WrenchScrewdriverIcon className="w-8 h-8 text-white" />
+              <div className="w-[55px] h-[55px] bg-gray-100 rounded-lg mx-auto flex items-center justify-center border border-gray-200">
+                <WrenchScrewdriverIcon className="w-6 h-6 text-gray-700" />
               </div>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">ATLAS Agentic Mode Activated! 🎉</h3>
-              <p className="text-gray-500 max-w-md">
-                I can now execute operations for you! Try asking me to check pod status, view logs, or scale deployments.
+              <h3 className="text-[21px] font-semibold text-gray-900">Ready to execute</h3>
+              <p className="text-[13px] text-gray-600 max-w-md leading-relaxed">
+                Agent mode active. Send a message to begin.
               </p>
               <div className="pt-4 grid grid-cols-2 gap-3 max-w-2xl">
                 <button
                   onClick={() => setInput("List all pods in production namespace")}
-                  className="text-left p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl text-sm text-gray-800 transition-all hover:scale-105 hover:shadow-lg border border-blue-200/50 font-medium"
+                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
                 >
-                  🔍 List all pods in production
+                  List all pods
                 </button>
                 <button
                   onClick={() => setInput("Check logs for backend-python pod")}
-                  className="text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm text-gray-700 transition-colors"
+                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
                 >
-                  📜 Check backend logs
+                  Check logs
                 </button>
                 <button
                   onClick={() => setInput("Show me pod crashes in the last hour")}
-                  className="text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm text-gray-700 transition-colors"
+                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
                 >
-                  🚨 Check for pod crashes
+                  Check crashes
                 </button>
                 <button
                   onClick={() => setInput("Get deployment status in staging")}
-                  className="text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm text-gray-700 transition-colors"
+                  className="text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md text-[13px] text-gray-700 transition-colors border border-gray-200 hover:border-gray-300"
                 >
-                  📊 Get deployment status
+                  Get status
                 </button>
               </div>
             </div>
@@ -418,10 +392,10 @@ export default function AgentChat() {
           <button
             type="submit"
             disabled={!input.trim() || loading}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 disabled:from-gray-300 disabled:via-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all hover:scale-105 hover:shadow-xl flex items-center space-x-2 font-semibold shadow-lg"
+            className="px-5 py-2.5 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-[13px] font-medium"
           >
-            <PaperAirplaneIcon className="w-5 h-5" />
             <span>Send</span>
+            <PaperAirplaneIcon className="w-4 h-4" />
           </button>
         </div>
       </form>
