@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.core.claude_agent import claude_agent
 from app.core.execution_engine import execution_engine
 from app.core.redis import get_redis_client
+from app.core.memory_engine import memory_engine
 from app.api.dependencies import get_current_user
 import json
 
@@ -115,6 +116,15 @@ async def agent_chat(
             }
         
         await redis.setex(meta_key, 604800, json.dumps(metadata))
+        
+        # Extract and store memories for long-term context
+        await memory_engine.extract_and_store_memory(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            user_message=request.message,
+            assistant_response=result.get("response", ""),
+            tool_uses=result.get("tool_uses", [])
+        )
         
         # Return response
         return AgentResponse(
@@ -349,4 +359,45 @@ async def update_conversation(
         raise
     except Exception as e:
         logger.error(f"Update conversation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/stats")
+async def get_memory_stats(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get statistics about agent's long-term memory"""
+    try:
+        user_id = current_user.get("sub", "demo-user")
+        stats = await memory_engine.get_memory_stats(user_id)
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Memory stats error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/recent")
+async def get_recent_memories(
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get recent memories stored by the agent"""
+    try:
+        user_id = current_user.get("sub", "demo-user")
+        redis = await get_redis_client()
+        
+        memory_key = f"memory:{user_id}"
+        recent = await redis.lrange(memory_key, -limit, -1)
+        
+        memories = [json.loads(mem) for mem in reversed(recent)]
+        
+        return {
+            "memories": memories,
+            "total": len(memories)
+        }
+        
+    except Exception as e:
+        logger.error(f"Recent memories error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
