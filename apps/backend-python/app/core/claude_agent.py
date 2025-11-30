@@ -32,7 +32,8 @@ class ClaudeAgent:
         conversation_id: str,
         system_prompt: Optional[str] = None,
         auto_approve_safe: bool = True,
-        approval_mode: str = "normal"
+        approval_mode: str = "normal",
+        claude_model: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Chat with Claude including tool execution
@@ -45,10 +46,13 @@ class ClaudeAgent:
             system_prompt: Optional system prompt
             auto_approve_safe: Auto-approve safe operations
             approval_mode: Approval mode (strict/normal/auto)
+            claude_model: Optional model override (defaults to config)
             
         Returns:
             Response with tool executions if any
         """
+        # Use specified model or fall back to configured model
+        model_to_use = claude_model or self.model
         messages = conversation_history + [{"role": "user", "content": user_message}]
         
         tool_uses = []
@@ -62,7 +66,7 @@ class ClaudeAgent:
             try:
                 # Call Claude with tools
                 response = await self.client.messages.create(
-                    model=self.model,
+                    model=model_to_use,
                     max_tokens=4096,
                     system=system_prompt or self._default_system_prompt(),
                     messages=messages,

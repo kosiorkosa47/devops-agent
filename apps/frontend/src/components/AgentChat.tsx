@@ -5,13 +5,16 @@ import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { Select, SelectItem } from '@heroui/react'
 import { 
   PaperAirplaneIcon, 
   TrashIcon, 
   CheckCircleIcon, 
   XCircleIcon,
   WrenchScrewdriverIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CpuChipIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/solid'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -25,12 +28,27 @@ interface Message {
   pendingExecution?: any
 }
 
+const CLAUDE_MODELS = [
+  { value: 'claude-sonnet-4-5-20250929', label: 'Claude 4.5 Sonnet (Latest)', description: 'Most capable, best for complex tasks' },
+  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', description: 'Fast and intelligent' },
+  { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus', description: 'Most powerful' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku', description: 'Fastest, most compact' },
+]
+
+const APPROVAL_MODES = [
+  { value: 'normal', label: 'Normal', description: 'Approve dangerous ops only', icon: '🔒', color: 'primary' },
+  { value: 'strict', label: 'Strict', description: 'Approve every operation', icon: '🛡️', color: 'warning' },
+  { value: 'auto', label: 'Auto', description: 'Auto-approve everything', icon: '⚡', color: 'danger' },
+]
+
 export default function AgentChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [autoApproveSafe, setAutoApproveSafe] = useState(true)
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-5-20250929')
+  const [approvalMode, setApprovalMode] = useState('normal')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -60,7 +78,9 @@ export default function AgentChat() {
       const response = await axios.post(`${API_URL}/api/agent/chat`, {
         message: input,
         conversation_id: conversationId,
-        auto_approve_safe: autoApproveSafe
+        auto_approve_safe: autoApproveSafe,
+        approval_mode: approvalMode,
+        claude_model: selectedModel
       })
 
       const assistantMessage: Message = {
@@ -132,25 +152,16 @@ export default function AgentChat() {
   return (
     <div className="w-full max-w-6xl h-[calc(100vh-120px)] bg-white rounded-xl shadow-lg flex flex-col">
       {/* Chat Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-2">
-            <WrenchScrewdriverIcon className="w-6 h-6 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">ATLAS Agentic Assistant</h2>
-            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">EXECUTION MODE</span>
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="flex items-center space-x-2">
+              <WrenchScrewdriverIcon className="w-6 h-6 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">ATLAS Agentic Assistant</h2>
+              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">EXECUTION MODE</span>
+            </div>
+            <p className="text-sm text-gray-500">I can now execute operations, not just suggest them!</p>
           </div>
-          <p className="text-sm text-gray-500">I can now execute operations, not just suggest them!</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <label className="flex items-center space-x-2 text-sm">
-            <input
-              type="checkbox"
-              checked={autoApproveSafe}
-              onChange={(e) => setAutoApproveSafe(e.target.checked)}
-              className="rounded"
-            />
-            <span>Auto-approve safe operations</span>
-          </label>
           <button
             onClick={clearConversation}
             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -158,6 +169,79 @@ export default function AgentChat() {
           >
             <TrashIcon className="w-5 h-5" />
           </button>
+        </div>
+        
+        {/* Configuration Row */}
+        <div className="flex items-center gap-4">
+          {/* Model Selector */}
+          <div className="flex-1">
+            <Select
+              label="Claude Model"
+              labelPlacement="outside-left"
+              placeholder="Select a model"
+              selectedKeys={[selectedModel]}
+              onSelectionChange={(keys) => setSelectedModel(Array.from(keys)[0] as string)}
+              classNames={{
+                base: "items-center",
+                label: "text-sm font-medium text-gray-700 mr-2",
+                trigger: "h-10 min-h-10",
+              }}
+              startContent={<CpuChipIcon className="w-4 h-4 text-blue-600" />}
+              size="sm"
+              variant="bordered"
+            >
+              {CLAUDE_MODELS.map((model) => (
+                <SelectItem 
+                  key={model.value} 
+                  value={model.value}
+                  description={model.description}
+                >
+                  {model.label}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+          
+          {/* Approval Mode Selector */}
+          <div className="flex-1">
+            <Select
+              label="Approval Mode"
+              labelPlacement="outside-left"
+              placeholder="Select mode"
+              selectedKeys={[approvalMode]}
+              onSelectionChange={(keys) => setApprovalMode(Array.from(keys)[0] as string)}
+              classNames={{
+                base: "items-center",
+                label: "text-sm font-medium text-gray-700 mr-2",
+                trigger: "h-10 min-h-10",
+              }}
+              startContent={<ShieldCheckIcon className="w-4 h-4 text-purple-600" />}
+              size="sm"
+              variant="bordered"
+            >
+              {APPROVAL_MODES.map((mode) => (
+                <SelectItem 
+                  key={mode.value} 
+                  value={mode.value}
+                  description={mode.description}
+                  startContent={<span className="text-lg">{mode.icon}</span>}
+                >
+                  {mode.label}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+          
+          {/* Auto-approve Toggle */}
+          <label className="flex items-center space-x-2 text-sm whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={autoApproveSafe}
+              onChange={(e) => setAutoApproveSafe(e.target.checked)}
+              className="rounded"
+            />
+            <span>Auto-approve safe</span>
+          </label>
         </div>
       </div>
 

@@ -23,6 +23,7 @@ class AgentRequest(BaseModel):
     conversation_id: Optional[str] = None
     auto_approve_safe: bool = True  # Auto-approve safe operations
     approval_mode: str = "normal"  # strict/normal/auto
+    claude_model: Optional[str] = None  # Optional model override
 
 
 class ApprovalRequest(BaseModel):
@@ -76,7 +77,8 @@ async def agent_chat(
             user_id=user_id,
             conversation_id=conversation_id,
             auto_approve_safe=request.auto_approve_safe,
-            approval_mode=request.approval_mode
+            approval_mode=request.approval_mode,
+            claude_model=request.claude_model
         )
         
         # Update conversation history
