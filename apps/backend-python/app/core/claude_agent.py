@@ -9,6 +9,7 @@ from anthropic import AsyncAnthropic
 from app.config import settings
 from app.core.tools import ToolDefinitions
 from app.core.execution_engine import execution_engine
+from app.core.memory_engine import memory_engine
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,19 @@ class ClaudeAgent:
         """
         # Use specified model or fall back to configured model
         model_to_use = claude_model or self.model
+        
+        # Load long-term memories
+        memory_context = await memory_engine.build_memory_context(user_id, user_message)
+        
+        # Build system prompt with memories
+        if system_prompt:
+            full_system_prompt = system_prompt
+        else:
+            full_system_prompt = self._default_system_prompt()
+        
+        if memory_context:
+            full_system_prompt += f"\n\n{memory_context}"
+        
         messages = conversation_history + [{"role": "user", "content": user_message}]
         
         tool_uses = []
@@ -64,11 +78,11 @@ class ClaudeAgent:
             iteration += 1
             
             try:
-                # Call Claude with tools
+                # Call Claude with tools (with long-term memory context)
                 response = await self.client.messages.create(
                     model=model_to_use,
                     max_tokens=4096,
-                    system=system_prompt or self._default_system_prompt(),
+                    system=full_system_prompt,
                     messages=messages,
                     tools=self.tools
                 )
